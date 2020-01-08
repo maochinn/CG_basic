@@ -1,7 +1,8 @@
 #version 430 core
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 2) out vec4 gDiffAlbedo;
+layout (location = 2) out vec4 gSpecAlbedo;
 
 in V_OUT
 {
@@ -25,8 +26,8 @@ void main()
     // Also store the per-fragment normals into the gbuffer
     gNormal = normalize(f_in.normal);
     // And the diffuse per-fragment color
-    gAlbedoSpec.rgb = texture(u_material.texture_diffuse1, f_in.texture_pos).rgb;
+    gDiffAlbedo = texture(u_material.texture_diffuse1, f_in.texture_pos);
     // Store specular intensity in gAlbedoSpec's alpha component
-    gAlbedoSpec.a = texture(u_material.texture_specular1, f_in.texture_pos).r;
+    gSpecAlbedo = texture(u_material.texture_specular1, f_in.texture_pos);
     // gAlbedoSpec = vec4(1.0, 0.0, 0.0, 1.0);
 }

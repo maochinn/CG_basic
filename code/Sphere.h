@@ -12,6 +12,7 @@ class Sphere
 {
 public:
 	Shader shader;
+	VAO sphere;
 
 	Sphere(Shader shader)
 		:shader(shader)
@@ -66,10 +67,8 @@ public:
 	
 
 	}
-private:
-	VAO sphere;
-
-	VAO generateVAO()
+//private:
+	static VAO generateVAO()
 	{
 		float ballVertex[] =
 		{

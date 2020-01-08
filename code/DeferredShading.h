@@ -1,4 +1,6 @@
 #pragma once
+#include <glm/glm.hpp>
+
 #include "Shader.h"
 #include "BufferObject.h"
 
@@ -7,13 +9,13 @@ class DeferredShading
 {
 public:
     Shader shader_geometry_pass;
-    Shader shader_lighting_pass;
+    Shader shader_shading_pass;
 
     FBO fbo;
     VAO vao;
 	DeferredShading(Shader shader_geometry_pass, Shader shader_lighting_pass,
         glm::ivec2 resolution):
-        shader_geometry_pass(shader_geometry_pass), shader_lighting_pass(shader_lighting_pass)
+        shader_geometry_pass(shader_geometry_pass), shader_shading_pass(shader_lighting_pass)
 	{
         this->size = resolution;
 
@@ -22,14 +24,14 @@ public:
 	}
     void render()
     {
-        this->shader_lighting_pass.Use();
+        this->shader_shading_pass.Use();
 
         this->bindPositionTexture(0);
-        glUniform1i(glGetUniformLocation(this->shader_lighting_pass.Program, "u_gPosition"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gPosition"), 0);
         this->bindNormalTexture(1);
-        glUniform1i(glGetUniformLocation(this->shader_lighting_pass.Program, "u_gNormal"), 1);
+        glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gNormal"), 1);
         this->bindAlbedoSpecTexture(2);
-        glUniform1i(glGetUniformLocation(this->shader_lighting_pass.Program, "u_gAlbedoSpec"), 2);
+        glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gAlbedoSpec"), 2);
 
         glBindVertexArray(this->vao.buffer);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -60,14 +62,15 @@ private:
 	FBO generateFBO(int width, int height)
 	{
         // Set up G-Buffer
-        // 3 textures:
+        // 4 textures:
         // 1. Positions (RGB)
         // 2. Normals (RGB)
-        // 3. Color (RGB) + Specular (A)
+        // 3. diffuse color(RGBA)
+        // 4. Specular color(RGBA)
         GLuint gBuffer;
         glGenFramebuffers(1, &gBuffer);
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-        GLuint gPosition, gNormal, gAlbedoSpec;
+        GLuint gPosition, gNormal, gDiffAlbedo, gSpecAlbedo;
         // - Position color buffer
         glGenTextures(1, &gPosition);
         glBindTexture(GL_TEXTURE_2D, gPosition);
@@ -82,16 +85,24 @@ private:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
-        // - Color + Specular color buffer
-        glGenTextures(1, &gAlbedoSpec);
-        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        // - Diffuse color buffer
+        glGenTextures(1, &gDiffAlbedo);
+        glBindTexture(GL_TEXTURE_2D, gDiffAlbedo);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gDiffAlbedo, 0);
+        // - Specular color buffer
+        glGenTextures(1, &gSpecAlbedo);
+        glBindTexture(GL_TEXTURE_2D, gSpecAlbedo);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gSpecAlbedo, 0);
+
         // - Tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-        GLuint attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        glDrawBuffers(3, attachments);
+        GLuint attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT2 };
+        glDrawBuffers(4, attachments);
         // - Create and attach depth buffer (renderbuffer)
         GLuint rboDepth;
         glGenRenderbuffers(1, &rboDepth);
@@ -108,7 +119,8 @@ private:
         fbo.buffer = gBuffer;
         fbo.textures[0] = gPosition;
         fbo.textures[1] = gNormal;
-        fbo.textures[2] = gAlbedoSpec;
+        fbo.textures[2] = gDiffAlbedo;
+        fbo.textures[3] = gSpecAlbedo;
         fbo.rbo = rboDepth;
         return fbo;
 	}

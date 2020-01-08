@@ -9,7 +9,8 @@ in V_OUT
 
 uniform sampler2D u_gPosition;
 uniform sampler2D u_gNormal;
-uniform sampler2D u_gAlbedoSpec;
+uniform sampler2D u_gDiffAlbedo;
+uniform sampler2D u_gSpecAlbedo;
 
 struct DirectLight
 {                   //offset
@@ -43,22 +44,22 @@ layout (std140, binding = 2) uniform View
 };
 
 
-vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 albedo, float specular);
-vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 albedo, float specular);
+vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, float spec_aldebo);
+vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, float spec_aldebo);
 
 void main()
 {             
     // retrieve data from G-buffer
     vec3 world_pos = texture(u_gPosition, f_in.texture_pos).rgb;
     vec3 normal = texture(u_gNormal, f_in.texture_pos).rgb;
-    vec3 albedo = texture(u_gAlbedoSpec, f_in.texture_pos).rgb;
-    float specular = texture(u_gAlbedoSpec, f_in.texture_pos).a;
+    vec3 diff_albedo = texture(u_gDiffAlbedo, f_in.texture_pos).rgb;
+    vec3 spec_aldebo = texture(u_gSpecAlbedo, f_in.texture_pos).rgb;
     
     // then calculate lighting as usual
     vec3 lighting = albedo * 0.1; // hard-coded ambient component
     vec3 view_dir = normalize(u_view_pos - world_pos);
 
-    lighting += computeDirectLight(u_direct_light, normal, u_view_dir, albedo, specular);
+    lighting += computeDirectLight(u_direct_light, normal, u_view_dir, diff_albedo, spec_aldebo);
 
     for(int i = 0; i < NR_LIGHTS; ++i)
     {
@@ -77,39 +78,39 @@ void main()
     // f_color = vec4(u_point_light[1].ambient, 1.0f);
 }
 
-vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 albedo, float specular)
+vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, float spec_aldebo)
 {
    vec3 light_dir = normalize(-light.direction);
 
 	//ambient
-	vec3 ambient = light.ambient * albedo;	//texture() return vec4
+	vec3 ambient = light.ambient * diff_albedo;	//texture() return vec4
 
 	//diffuse
 	float diff = max(dot(normal, light_dir), 0.0);
-	vec3 diffuse = light.diffuse * diff * albedo;
+	vec3 diffuse = light.diffuse * diff * diff_albedo;
 
 	//specular
     vec3 halfway_dir = normalize(light_dir + view_dir);  
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
-    vec3 specular_color = light.specular * spec * specular;
+    vec3 specular = light.specular * spec * spec_aldebo;
 
 	return (ambient + diffuse + specular_color);
 }
-vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 albedo, float specular)
+vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, float spec_aldebo)
 {
 	vec3 light_dir = normalize(light.position - world_pos);
 
 	//ambient
-	vec3 ambient = light.ambient * albedo;	//texture() return vec4
+	vec3 ambient = light.ambient * diff_albedo;	//texture() return vec4
 
 	//diffuse
 	float diff = max(dot(normal, light_dir), 0.0);
-	vec3 diffuse = light.diffuse * diff * albedo;
+	vec3 diffuse = light.diffuse * diff * diff_albedo;
 
 	//specular
     vec3 halfway_dir = normalize(light_dir + view_dir);  
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
-    vec3 specular_color = light.specular * spec * specular;
+    vec3 specular = light.specular * spec * spec_aldebo;
 
 	//attenuation
 	float distance = length(light.position - world_pos);
@@ -119,7 +120,7 @@ vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_
 
 	ambient *= attenuation;
 	diffuse *= attenuation;
-	specular_color *= attenuation;
+	specular *= attenuation;
 
-	return (ambient + diffuse + specular_color);
+	return (ambient + diffuse + specular);
 }

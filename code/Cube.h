@@ -9,6 +9,7 @@ class Cube
 {
 public:
 	Shader shader;
+	VAO cube;
 
 	Cube(Shader shader)
 		:shader(shader)
@@ -50,8 +51,6 @@ public:
 		glBindVertexArray(0);
 	}
 private:
-	VAO cube;
-
 	VAO generateVAO()
 	{
 		float cubeVertices[] =
