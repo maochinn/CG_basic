@@ -44,8 +44,8 @@ layout (std140, binding = 2) uniform View
 };
 
 
-vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, float spec_aldebo);
-vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, float spec_aldebo);
+vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, vec3 spec_aldebo);
+vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, vec3 spec_aldebo);
 
 void main()
 {             
@@ -56,7 +56,7 @@ void main()
     vec3 spec_aldebo = texture(u_gSpecAlbedo, f_in.texture_pos).rgb;
     
     // then calculate lighting as usual
-    vec3 lighting = albedo * 0.1; // hard-coded ambient component
+    vec3 lighting = diff_albedo * 0.1; // hard-coded ambient component
     vec3 view_dir = normalize(u_view_pos - world_pos);
 
     lighting += computeDirectLight(u_direct_light, normal, u_view_dir, diff_albedo, spec_aldebo);
@@ -67,18 +67,18 @@ void main()
         // vec3 light_dir = normalize(lights[i].Position - world_pos);
         // vec3 diffuse = max(dot(Normal, light_dir), 0.0) * Albedo * lights[i].Color;
         // lighting += diffuse;
-        lighting += computePointLight(u_point_light[i], normal, world_pos, view_dir, albedo, specular);
+        lighting += computePointLight(u_point_light[i], normal, world_pos, view_dir, diff_albedo, spec_aldebo);
     }
     
     f_color = vec4(lighting, 1.0);
 
-    // f_color = vec4(albedo.rgb, 1.0);
+    f_color = vec4(diff_albedo.rgb, 1.0);
     // f_color = vec4(1.0, 0.0, 0.0, 1.0);
     // f_color = vec4(u_point_light[0].attenuation, 1.0f);
     // f_color = vec4(u_point_light[1].ambient, 1.0f);
 }
 
-vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, float spec_aldebo)
+vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff_albedo, vec3 spec_aldebo)
 {
    vec3 light_dir = normalize(-light.direction);
 
@@ -94,9 +94,9 @@ vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir, vec3 diff
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
     vec3 specular = light.specular * spec * spec_aldebo;
 
-	return (ambient + diffuse + specular_color);
+	return (ambient + diffuse + specular);
 }
-vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, float spec_aldebo)
+vec3 computePointLight(PointLight light, vec3 normal, vec3 world_pos, vec3 view_dir, vec3 diff_albedo, vec3 spec_aldebo)
 {
 	vec3 light_dir = normalize(light.position - world_pos);
 

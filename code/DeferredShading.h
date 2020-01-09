@@ -30,8 +30,10 @@ public:
         glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gPosition"), 0);
         this->bindNormalTexture(1);
         glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gNormal"), 1);
-        this->bindAlbedoSpecTexture(2);
-        glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gAlbedoSpec"), 2);
+        this->bindDiffAlbedoTexture(2);
+        glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gDiffAlbedo"), 2);
+		this->bindSpecAlbedoTexture(3);
+		glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gSpecAlbedo"), 3);
 
         glBindVertexArray(this->vao.buffer);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -51,11 +53,16 @@ public:
         glActiveTexture(GL_TEXTURE0 + bind_unit);
         glBindTexture(GL_TEXTURE_2D, fbo.textures[1]);
     }
-    void bindAlbedoSpecTexture(int bind_unit)
+    void bindDiffAlbedoTexture(int bind_unit)
     {
         glActiveTexture(GL_TEXTURE0 + bind_unit);
         glBindTexture(GL_TEXTURE_2D, fbo.textures[2]);
     }
+	void bindSpecAlbedoTexture(int bind_unit)
+	{
+		glActiveTexture(GL_TEXTURE0 + bind_unit);
+		glBindTexture(GL_TEXTURE_2D, fbo.textures[3]);
+	}
 private:	
     glm::ivec2 size;
 
@@ -88,20 +95,20 @@ private:
         // - Diffuse color buffer
         glGenTextures(1, &gDiffAlbedo);
         glBindTexture(GL_TEXTURE_2D, gDiffAlbedo);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gDiffAlbedo, 0);
         // - Specular color buffer
         glGenTextures(1, &gSpecAlbedo);
         glBindTexture(GL_TEXTURE_2D, gSpecAlbedo);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gSpecAlbedo, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gSpecAlbedo, 0);
 
         // - Tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-        GLuint attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT2 };
+        GLuint attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
         glDrawBuffers(4, attachments);
         // - Create and attach depth buffer (renderbuffer)
         GLuint rboDepth;
