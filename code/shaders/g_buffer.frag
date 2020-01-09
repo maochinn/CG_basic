@@ -4,7 +4,7 @@ layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gDiffAlbedo;
 layout (location = 3) out vec4 gSpecAlbedo;
 
-in V_OUT
+in E_OUT
 {
     vec3 world_pos;
     vec3 normal;

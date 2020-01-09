@@ -82,7 +82,9 @@ public:
 
 		// Draw mesh
 		glBindVertexArray(this->VAO);
-		glDrawElements(GL_TRIANGLES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
+		//glDrawElements(GL_TRIANGLES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
+		glPatchParameteri(GL_PATCH_VERTICES, 3);
+		glDrawElements(GL_PATCHES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		// Always good practice to set everything back to defaults once configured.

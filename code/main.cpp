@@ -277,8 +277,18 @@ void initialize()
 
 	//shadow_map = new ShadowMap(simpleDepthShader, shadowMap, glm::ivec2(512, 512));
 
+	//deferred_shading = new DeferredShading(
+	//	Shader("code/shaders/g_buffer.vert", "code/shaders/g_buffer.frag"),
+	//	Shader("code/shaders/deferredShading.vert", "code/shaders/deferredShading.frag"),
+	//	glm::ivec2(WIDTH, HEIGHT));
+
 	deferred_shading = new DeferredShading(
-		Shader("code/shaders/g_buffer.vert", "code/shaders/g_buffer.frag"),
+		Shader(
+			"code/shaders/g_buffer.vert",
+			"code/shaders/g_buffer.tesc",
+			"code/shaders/g_buffer.tese",
+			nullptr,
+			"code/shaders/g_buffer.frag"),
 		Shader("code/shaders/deferredShading.vert", "code/shaders/deferredShading.frag"),
 		glm::ivec2(WIDTH, HEIGHT));
 
