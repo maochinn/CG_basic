@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 
 
@@ -15,6 +16,40 @@ class Shader
 public:
 	GLuint Program;
 	// Constructor generates the shader on the fly
+	Shader(const GLchar* vert, const GLchar* tesc, const GLchar* tese, const char* geom, const char* frag)
+	{
+		std::vector<GLuint> shaders;
+		if (vert)
+			shaders.push_back(this->compileShader(GL_VERTEX_SHADER, this->readCode(vert).c_str()));
+		if (tesc)
+			shaders.push_back(this->compileShader(GL_TESS_CONTROL_SHADER, this->readCode(tesc).c_str()));
+		if (tese)
+			shaders.push_back(this->compileShader(GL_TESS_EVALUATION_SHADER, this->readCode(tese).c_str()));
+		if (geom)
+			shaders.push_back(this->compileShader(GL_GEOMETRY_SHADER, this->readCode(geom).c_str()));
+		if (frag)
+			shaders.push_back(this->compileShader(GL_FRAGMENT_SHADER, this->readCode(frag).c_str()));
+
+		// Shader Program
+		GLint success;
+		GLchar infoLog[512];
+		this->Program = glCreateProgram();
+
+		for (GLuint shader : shaders)
+			glAttachShader(this->Program, shader);
+
+		glLinkProgram(this->Program);
+		// Print linking errors if any
+		glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
+			std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+		}
+
+		for (GLuint shader : shaders)
+			glDeleteShader(shader);
+	}
 	Shader(const GLchar* vertexPath, const GLchar* fragmentPath)
 	{
 		// 1. Retrieve the vertex/fragment source code from filePath

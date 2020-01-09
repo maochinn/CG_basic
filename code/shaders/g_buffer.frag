@@ -6,9 +6,9 @@ layout (location = 3) out vec4 gSpecAlbedo;
 
 in V_OUT
 {
-   vec3 normal;
-   vec3 world_pos;
-   vec2 texture_pos;
+    vec3 world_pos;
+    vec3 normal;
+    vec2 texture_pos;
 } f_in;
 
 struct Material

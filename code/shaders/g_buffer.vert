@@ -8,9 +8,9 @@ layout (location = 5) in vec3 ambient;
 
 out V_OUT
 {
-   vec3 normal;
-   vec3 world_pos;
-   vec2 texture_pos;
+    vec3 world_pos;
+    vec3 normal;
+    vec2 texture_pos;
 } v_out;
 
 layout (std140, binding = 0) uniform Matrices

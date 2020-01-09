@@ -183,6 +183,8 @@ int main(int /* argc */, char ** /* argv */) {
 		glEnable(GL_CULL_FACE);
 		glDisable(GL_BLEND);
 
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		for (glm::vec3 pos : objectPositions)
 		{
 			glm::mat4 model_matrix = glm::mat4();
@@ -192,7 +194,7 @@ int main(int /* argc */, char ** /* argv */) {
 			glUniformMatrix4fv(glGetUniformLocation(deferred_shading->shader_geometry_pass.Program, "u_model"), 1, GL_FALSE, &model_matrix[0][0]);
 			nanosuit->Draw(deferred_shading->shader_geometry_pass);
 		}
-		
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		
 
