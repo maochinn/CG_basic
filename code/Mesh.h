@@ -59,20 +59,30 @@ public:
 	// Render the mesh
 	void render(Shader* shader, bool render_patch = false)
 	{
+		bool use_normal_map = false;
+		bool use_displacement_map = false;
+
 		//only bind a texture
 		for (GLuint i = 0; i < this->textures.size(); i++)
 		{
 			textures[i].bind(i);
-			if(textures[i].type == Texture2D::Type::TEXTURE_DIFFUSE)
+			if (textures[i].type == Texture2D::Type::TEXTURE_DIFFUSE)
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.diffuse"), i);
 			else if (textures[i].type == Texture2D::Type::TEXTURE_SPECULAR)
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.specular"), i);
 			else if (textures[i].type == Texture2D::Type::TEXTURE_NORMAL)
+			{
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.normal"), i);
+				use_normal_map = true;
+			}
 			else if (textures[i].type == Texture2D::Type::TEXTURE_DISPLACEMENT)
+			{
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.displacement"), i);
+				use_displacement_map = true;
+			}
 		}
-
+		glUniform1i(glGetUniformLocation(shader->Program, "u_use_normal_map"), use_normal_map);
+		glUniform1i(glGetUniformLocation(shader->Program, "u_use_displacement_map"), use_displacement_map);
 
 		// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
 		glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);

@@ -50,8 +50,7 @@ public:
 
 		for (Mesh& mesh : this->meshes)
 		{
-			//use patch to render
-			if (shader->type & Shader::Type::TESS_EVALUATION_SHADER == 0)
+			if ((shader->type & Shader::Type::TESS_EVALUATION_SHADER) == 0)
 				mesh.render(shader, false);
 			else
 				mesh.render(shader, true);

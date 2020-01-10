@@ -51,6 +51,7 @@ UBO* light = nullptr;
 UBO* view = nullptr;
 //ObjModel* model = nullptr;
 Model* nanosuit = nullptr;
+Model* dddd = nullptr;
 //ShadowMap* shadow_map = nullptr;
 DeferredShading* deferred_shading = nullptr;
 
@@ -189,6 +190,7 @@ int main(int /* argc */, char ** /* argv */) {
 		{
 			glm::mat4 model_matrix = glm::mat4();
 			model_matrix = glm::translate(model_matrix, pos);
+			model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
 
 			nanosuit->render(model_matrix);
@@ -259,10 +261,10 @@ void initialize()
 	screen = new nanogui::Screen();
 	screen->initialize(window, true);
 	
-	Shader shader("code/shaders/noTexture.vert", "code/shaders/noTexture.frag");
-	Shader t_shader("code/shaders/singleTexture.vert", "code/shaders/singleTexture.frag");
-	Shader simpleDepthShader("code/shaders/simpleDepth.vert", "code/shaders/simpleDepth.frag");
-	Shader shadowMap("code/shaders/shadowMap.vert", "code/shaders/shadowMap.frag");
+	Shader shader("code/shaders/noTexture.vert", nullptr, nullptr, nullptr, "code/shaders/noTexture.frag");
+	Shader t_shader("code/shaders/singleTexture.vert", nullptr, nullptr, nullptr, "code/shaders/singleTexture.frag");
+	Shader simpleDepthShader("code/shaders/simpleDepth.vert", nullptr, nullptr, nullptr, "code/shaders/simpleDepth.frag");
+	Shader shadowMap("code/shaders/shadowMap.vert", nullptr, nullptr, nullptr, "code/shaders/shadowMap.frag");
 
 	texture = new Texture2D("img/kurumi.png");
 	texture2 = new Texture2D("img/chara_kurumi.png");
@@ -288,11 +290,11 @@ void initialize()
 			"code/shaders/g_buffer.tese",
 			nullptr,
 			"code/shaders/g_buffer.frag"),
-		Shader("code/shaders/deferredShading.vert", "code/shaders/deferredShading.frag"),
+		Shader("code/shaders/deferredShading.vert", nullptr, nullptr, nullptr, "code/shaders/deferredShading.frag"),
 		glm::ivec2(WIDTH, HEIGHT));
 
 	nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_shading->shader_geometry_pass);
-
+	
 	// - Colors
 	srand(13);
 	for (GLuint i = 0; i < NR_LIGHTS; i++)

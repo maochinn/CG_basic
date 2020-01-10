@@ -75,70 +75,70 @@ public:
 		for (GLuint shader : shaders)
 			glDeleteShader(shader);
 	}
-	Shader(const GLchar* vertexPath, const GLchar* fragmentPath)
-	{
-		// 1. Retrieve the vertex/fragment source code from filePath
-		// Vertex Shader
-		std::string code = this->readCode(vertexPath);
-		GLuint vertex = this->compileShader(GL_VERTEX_SHADER, code.c_str());
-		// Fragment Shader
-		code = this->readCode(fragmentPath);
-		GLuint fragment = this->compileShader(GL_FRAGMENT_SHADER, code.c_str());
+	//Shader(const GLchar* vertexPath, const GLchar* fragmentPath)
+	//{
+	//	// 1. Retrieve the vertex/fragment source code from filePath
+	//	// Vertex Shader
+	//	std::string code = this->readCode(vertexPath);
+	//	GLuint vertex = this->compileShader(GL_VERTEX_SHADER, code.c_str());
+	//	// Fragment Shader
+	//	code = this->readCode(fragmentPath);
+	//	GLuint fragment = this->compileShader(GL_FRAGMENT_SHADER, code.c_str());
 
-		
-		// Shader Program
-		GLint success;
-		GLchar infoLog[512];
-		this->Program = glCreateProgram();
-		glAttachShader(this->Program, vertex);
-		glAttachShader(this->Program, fragment);
-		glLinkProgram(this->Program);
-		// Print linking errors if any
-		glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
-		if (!success)
-		{
-			glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
-			std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-		}
-		// Delete the shaders as they're linked into our program now and no longer necessery
-		glDeleteShader(vertex);
-		glDeleteShader(fragment);
+	//	
+	//	// Shader Program
+	//	GLint success;
+	//	GLchar infoLog[512];
+	//	this->Program = glCreateProgram();
+	//	glAttachShader(this->Program, vertex);
+	//	glAttachShader(this->Program, fragment);
+	//	glLinkProgram(this->Program);
+	//	// Print linking errors if any
+	//	glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
+	//	if (!success)
+	//	{
+	//		glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
+	//		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+	//	}
+	//	// Delete the shaders as they're linked into our program now and no longer necessery
+	//	glDeleteShader(vertex);
+	//	glDeleteShader(fragment);
 
-	}
-	Shader(const GLchar* vertexPath, const GLchar* geometrytPath, const GLchar* fragmentPath)
-	{
-		// 1. Retrieve the vertex/fragment source code from filePath
-		// Vertex Shader
-		std::string code = this->readCode(vertexPath);
-		GLuint vertex = this->compileShader(GL_VERTEX_SHADER, code.c_str());
-		// Geometry Shader
-		code = this->readCode(geometrytPath);
-		GLuint geomrtry = this->compileShader(GL_GEOMETRY_SHADER, code.c_str());
-		// Fragment Shader
-		code = this->readCode(fragmentPath);
-		GLuint fragment = this->compileShader(GL_FRAGMENT_SHADER, code.c_str());
+	//}
+	//Shader(const GLchar* vertexPath, const GLchar* geometrytPath, const GLchar* fragmentPath)
+	//{
+	//	// 1. Retrieve the vertex/fragment source code from filePath
+	//	// Vertex Shader
+	//	std::string code = this->readCode(vertexPath);
+	//	GLuint vertex = this->compileShader(GL_VERTEX_SHADER, code.c_str());
+	//	// Geometry Shader
+	//	code = this->readCode(geometrytPath);
+	//	GLuint geomrtry = this->compileShader(GL_GEOMETRY_SHADER, code.c_str());
+	//	// Fragment Shader
+	//	code = this->readCode(fragmentPath);
+	//	GLuint fragment = this->compileShader(GL_FRAGMENT_SHADER, code.c_str());
 
 
-		// Shader Program
-		GLint success;
-		GLchar infoLog[512];
-		this->Program = glCreateProgram();
-		glAttachShader(this->Program, vertex);
-		glAttachShader(this->Program, geomrtry);
-		glAttachShader(this->Program, fragment);
-		glLinkProgram(this->Program);
-		// Print linking errors if any
-		glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
-		if (!success)
-		{
-			glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
-			std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-		}
-		// Delete the shaders as they're linked into our program now and no longer necessery
-		glDeleteShader(vertex);
-		glDeleteShader(geomrtry);
-		glDeleteShader(fragment);
-	}
+	//	// Shader Program
+	//	GLint success;
+	//	GLchar infoLog[512];
+	//	this->Program = glCreateProgram();
+	//	glAttachShader(this->Program, vertex);
+	//	glAttachShader(this->Program, geomrtry);
+	//	glAttachShader(this->Program, fragment);
+	//	glLinkProgram(this->Program);
+	//	// Print linking errors if any
+	//	glGetProgramiv(this->Program, GL_LINK_STATUS, &success);
+	//	if (!success)
+	//	{
+	//		glGetProgramInfoLog(this->Program, 512, NULL, infoLog);
+	//		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+	//	}
+	//	// Delete the shaders as they're linked into our program now and no longer necessery
+	//	glDeleteShader(vertex);
+	//	glDeleteShader(geomrtry);
+	//	glDeleteShader(fragment);
+	//}
 	// Uses the current shader
 	void Use()
 	{

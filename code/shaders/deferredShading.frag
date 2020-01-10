@@ -72,7 +72,7 @@ void main()
     
     f_color = vec4(lighting, 1.0);
 
-    f_color = vec4(diff_albedo.rgb, 1.0);
+    // f_color = vec4(diff_albedo.rgb, 1.0);
     // f_color = vec4(1.0, 0.0, 0.0, 1.0);
     // f_color = vec4(u_point_light[0].attenuation, 1.0f);
     // f_color = vec4(u_point_light[1].ambient, 1.0f);

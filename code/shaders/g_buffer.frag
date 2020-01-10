@@ -12,6 +12,14 @@ in E_OUT
     mat3 TBN;
 } f_in;
 
+// in V_OUT
+// {
+//     vec3 world_pos;
+//     vec3 world_normal;
+//     vec2 texture_pos;
+//     vec3 world_tagent;
+// } f_in;
+
 struct Material
 {
     sampler2D diffuse;
@@ -21,6 +29,8 @@ struct Material
     float shininess;
 };
 uniform Material u_material;
+uniform bool u_use_normal_map;
+uniform bool u_use_displacement_map;
 
 void main()
 {    
@@ -31,7 +41,10 @@ void main()
     // Store the fragment position vector in the first gbuffer texture
     gPosition = f_in.world_pos;
     // Also store the per-fragment normals into the gbuffer
-    gNormal = normalize(f_in.world_normal);
+    if(u_use_normal_map)
+        gNormal = normalize(normal);
+    else
+        gNormal = normalize(f_in.world_normal);
     // And the diffuse per-fragment color
     gDiffAlbedo = texture(u_material.diffuse, f_in.texture_pos);
     // Store specular intensity in gAlbedoSpec's alpha component
