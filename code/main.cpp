@@ -184,17 +184,16 @@ int main(int /* argc */, char ** /* argv */) {
 		glDisable(GL_BLEND);
 
 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		for (glm::vec3 pos : objectPositions)
 		{
 			glm::mat4 model_matrix = glm::mat4();
 			model_matrix = glm::translate(model_matrix, pos);
 			model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
 
-			glUniformMatrix4fv(glGetUniformLocation(deferred_shading->shader_geometry_pass.Program, "u_model"), 1, GL_FALSE, &model_matrix[0][0]);
-			nanosuit->Draw(deferred_shading->shader_geometry_pass);
+			nanosuit->render(model_matrix);
 		}
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		
 
@@ -292,7 +291,7 @@ void initialize()
 		Shader("code/shaders/deferredShading.vert", "code/shaders/deferredShading.frag"),
 		glm::ivec2(WIDTH, HEIGHT));
 
-	nanosuit = new Model("model/nanosuit/nanosuit.obj");
+	nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_shading->shader_geometry_pass);
 
 	// - Colors
 	srand(13);

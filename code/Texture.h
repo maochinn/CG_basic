@@ -4,10 +4,21 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
+
 class Texture2D
 {
 public:
-	Texture2D(const char* path)
+	enum Type {
+		TEXTURE_DEFAULT = 0,
+		TEXTURE_DIFFUSE, TEXTURE_SPECULAR,
+		TEXTURE_NORMAL, TEXTURE_DISPLACEMENT,
+		TEXTURE_HEIGHT,
+	};
+
+	Type type;
+
+	Texture2D(const char* path, Type texture_type = Texture2D::TEXTURE_DEFAULT):
+		type(texture_type)
 	{
 		cv::Mat img;
 		//cv::imread(path, cv::IMREAD_COLOR).convertTo(img, CV_32FC3, 1 / 255.0f);	//unsigned char to float
@@ -49,5 +60,5 @@ public:
 	glm::ivec2 size;
 private:
 	GLuint id;
-	
+
 };

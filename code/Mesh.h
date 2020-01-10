@@ -14,36 +14,39 @@ using namespace std;
 
 #include <assimp\types.h>
 
+#include "Texture.h"
+#include "BufferObject.h"
 #include "Shader.h"
 
 struct Vertex {
 	// Position
-	glm::vec3 Position;
+	glm::vec3 position;
 	// Normal
-	glm::vec3 Normal;
+	glm::vec3 normal;
 	// TexCoords
-	glm::vec2 TexCoords;
-	glm::vec3 Diff;
-	glm::vec3 Spec;
-	glm::vec3 Ambi;
+	glm::vec2 texture_pos;
+	glm::vec3 tangent;
+	//glm::vec3 Diff;
+	//glm::vec3 Spec;
+	//glm::vec3 Ambi;
 };
 
-struct Texture {
-	GLuint id;
-	string type;
-	aiString path;	// We store the path of the texture to compare with other textures
-};
+//struct Texture {
+//	GLuint id;
+//	string type;
+//	aiString path;	// We store the path of the texture to compare with other textures
+//};
 
 class Mesh {
 public:
 	/*  Mesh Data  */
 	vector<Vertex> vertices;
 	vector<GLuint> indices;
-	vector<Texture> textures;
+	vector<Texture2D> textures;
 
 	/*  Functions  */
 	// Constructor
-	Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures)
+	Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture2D> textures)
 	{
 		this->vertices = vertices;
 		this->indices = indices;
@@ -54,69 +57,67 @@ public:
 	}
 
 	// Render the mesh
-	void Draw(Shader shader)
+	void render(Shader* shader, bool render_patch = false)
 	{
-		// Bind appropriate textures
-		GLuint diffuseNr = 1;
-		GLuint specularNr = 1;
+		//only bind a texture
 		for (GLuint i = 0; i < this->textures.size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + i); // Active proper texture unit before binding
-			// Retrieve texture number (the N in diffuse_textureN)
-			stringstream ss;
-			string number;
-			string name = this->textures[i].type;
-			if (name == "texture_diffuse")
-				ss << diffuseNr++; // Transfer GLuint to stream
-			else if (name == "texture_specular")
-				ss << specularNr++; // Transfer GLuint to stream
-			number = ss.str();
-			// Now set the sampler to the correct texture unit
-			glUniform1i(glGetUniformLocation(shader.Program, ("u_material." + name + number).c_str()), i);
-			// And finally bind the texture
-			glBindTexture(GL_TEXTURE_2D, this->textures[i].id);
+			textures[i].bind(i);
+			if(textures[i].type == Texture2D::Type::TEXTURE_DIFFUSE)
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.diffuse"), i);
+			else if (textures[i].type == Texture2D::Type::TEXTURE_SPECULAR)
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.specular"), i);
+			else if (textures[i].type == Texture2D::Type::TEXTURE_NORMAL)
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.normal"), i);
+			else if (textures[i].type == Texture2D::Type::TEXTURE_DISPLACEMENT)
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.displacement"), i);
 		}
 
+
 		// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
-		glUniform1f(glGetUniformLocation(shader.Program, "u_material.shininess"), 16.0f);
+		glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
 
 		// Draw mesh
-		glBindVertexArray(this->VAO);
-		//glDrawElements(GL_TRIANGLES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
-		glPatchParameteri(GL_PATCH_VERTICES, 3);
-		glDrawElements(GL_PATCHES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(this->vao.buffer);
+		if (render_patch)
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, 3);
+			glDrawElements(GL_PATCHES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);
+		}
+		else
+			glDrawElements(GL_TRIANGLES, (GLsizei)this->indices.size(), GL_UNSIGNED_INT, 0);		
 		glBindVertexArray(0);
 
 		// Always good practice to set everything back to defaults once configured.
 		for (GLuint i = 0; i < this->textures.size(); i++)
 		{
-			glActiveTexture(GL_TEXTURE0 + i);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			textures[i].unbind(i);
 		}
 	}
 
 private:
 	/*  Render data  */
-	GLuint VAO, VBO, EBO;
+	//GLuint VAO, VBO, EBO;
+	VAO vao;
 
 	/*  Functions    */
 	// Initializes all the buffer objects/arrays
 	void setupMesh()
 	{
 		// Create buffers/arrays
-		glGenVertexArrays(1, &this->VAO);
-		glGenBuffers(1, &this->VBO);
-		glGenBuffers(1, &this->EBO);
+		glGenVertexArrays(1, &this->vao.buffer);
+		glGenBuffers(1, this->vao.vbo);
+		glGenBuffers(1, &this->vao.ebo);
 
-		glBindVertexArray(this->VAO);
+		glBindVertexArray(this->vao.buffer);
 		// Load data into vertex buffers
-		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
+		glBindBuffer(GL_ARRAY_BUFFER, this->vao.vbo[0]);
 		// A great thing about structs is that their memory layout is sequential for all its items.
 		// The effect is that we can simply pass a pointer to the struct and it translates perfectly to a glm::vec3/2 array which
 		// again translates to 3/2 floats which translates to a byte array.
 		glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(Vertex), &this->vertices[0], GL_STATIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vao.ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(GLuint), &this->indices[0], GL_STATIC_DRAW);
 
 		// Set the vertex attribute pointers
@@ -125,19 +126,22 @@ private:
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
 		// Vertex Normals
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Normal));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, normal));
 		// Vertex Texture Coords
 		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, TexCoords));
-
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, texture_pos));
+		// Vertex Tangent Coords
 		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Diff));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, tangent));
 
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Spec));
+		//glEnableVertexAttribArray(3);
+		//glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Diff));
 
-		glEnableVertexAttribArray(5);
-		glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Ambi));
+		//glEnableVertexAttribArray(4);
+		//glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Spec));
+
+		//glEnableVertexAttribArray(5);
+		//glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Ambi));
 
 		glBindVertexArray(0);
 	}

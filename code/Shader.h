@@ -15,21 +15,46 @@ class Shader
 {
 public:
 	GLuint Program;
+	enum Type {
+		NULL_SHADER = (0),
+		VERTEX_SHADER = (1 << 0),
+		TESS_CONTROL_SHADER = (1 << 1),
+		TESS_EVALUATION_SHADER = (1 << 2),
+		GEOMETRY_SHADER = (1 << 3),
+		FRAGMENT_SHADER = (1 << 4),
+	};
+	//DEFINE_ENUM_FLAG_OPERATORS(Type);
+
+	Type type = NULL_SHADER;
 	// Constructor generates the shader on the fly
 	Shader(const GLchar* vert, const GLchar* tesc, const GLchar* tese, const char* geom, const char* frag)
 	{
 		std::vector<GLuint> shaders;
 		if (vert)
+		{
 			shaders.push_back(this->compileShader(GL_VERTEX_SHADER, this->readCode(vert).c_str()));
+			this->type = (Shader::Type)(this->type | Type::VERTEX_SHADER);
+		}
 		if (tesc)
+		{
 			shaders.push_back(this->compileShader(GL_TESS_CONTROL_SHADER, this->readCode(tesc).c_str()));
+			this->type = (Shader::Type)(this->type | Type::TESS_CONTROL_SHADER);
+		}
 		if (tese)
+		{
 			shaders.push_back(this->compileShader(GL_TESS_EVALUATION_SHADER, this->readCode(tese).c_str()));
+			this->type = (Shader::Type)(this->type | Type::TESS_EVALUATION_SHADER);
+		}
 		if (geom)
+		{
 			shaders.push_back(this->compileShader(GL_GEOMETRY_SHADER, this->readCode(geom).c_str()));
+			this->type = (Shader::Type)(this->type | Type::GEOMETRY_SHADER);
+		}
 		if (frag)
+		{
 			shaders.push_back(this->compileShader(GL_FRAGMENT_SHADER, this->readCode(frag).c_str()));
-
+			this->type = (Shader::Type)(this->type | Type::FRAGMENT_SHADER);
+		}
 		// Shader Program
 		GLint success;
 		GLchar infoLog[512];
@@ -142,6 +167,7 @@ private:
 		catch (std::ifstream::failure e)
 		{
 			std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+			std::cout << path << std::endl;
 		}
 		return code;
 	}
@@ -161,6 +187,10 @@ private:
 			glGetShaderInfoLog(shader_number, 512, NULL, infoLog);
 			if(shader_type == GL_VERTEX_SHADER)
 				std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+			else if (shader_type == GL_TESS_CONTROL_SHADER)
+				std::cout << "ERROR::SHADER::TESS_CONTROL::COMPILATION_FAILED\n" << infoLog << std::endl;
+			else if (shader_type == GL_TESS_EVALUATION_SHADER)
+				std::cout << "ERROR::SHADER::TESS_EVALUATION::COMPILATION_FAILED\n" << infoLog << std::endl;
 			else if(shader_type == GL_GEOMETRY_SHADER)
 				std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
 			else if (shader_type == GL_FRAGMENT_SHADER)
