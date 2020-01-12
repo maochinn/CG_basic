@@ -28,7 +28,8 @@ struct PointLight
 	// float constant;
 	// float linear;
 	// float quadratic;
-    vec3 attenuation;
+    // float radius;
+    vec4 attenuation;
 };
 
 const int NR_LIGHTS = 32;

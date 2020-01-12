@@ -1,18 +1,12 @@
 #version 430 core
 layout (location = 0) in vec3 position;
+layout (location = 1) in vec2 texture_pos;
 
-// out V_OUT
-// {
-//    vec3 normal;
-//    vec3 world_pos;
-//    vec2 texture_pos;
-// } v_out;
-
-layout (std140, binding = 0) uniform Matrices
+out V_OUT
 {
-    mat4 u_projection;
-    mat4 u_view;
-};
+    flat int light_index;
+} v_out;
+
 struct DirectLight
 {                   //offset
 	vec3 direction; //0
@@ -29,8 +23,16 @@ struct PointLight
 	// float constant;
 	// float linear;
 	// float quadratic;
-    vec3 attenuation;
+    // float radius;
+    vec4 attenuation;
 };
+
+layout (std140, binding = 0) uniform Matrices
+{
+    mat4 u_projection;
+    mat4 u_view;
+};
+
 
 const int NR_LIGHTS = 32;
 layout (std140, binding = 1) uniform Light
@@ -38,11 +40,13 @@ layout (std140, binding = 1) uniform Light
     DirectLight u_direct_light;
     PointLight u_point_light[NR_LIGHTS];
 };
-uniform mat4 u_model;
 
 void main()
 {
-    vec4 world_pos = u_model * vec4(position, 1.0f);
-    world_pos += u_point_light[gl_InstanceID].position
+    float radius = u_point_light[gl_InstanceID].attenuation[3];
+    vec4 world_pos = vec4(radius * position + u_point_light[gl_InstanceID].position, 1.0f);
+
+    v_out.light_index = gl_InstanceID;
+ 
     gl_Position = u_projection * u_view * world_pos;
 }

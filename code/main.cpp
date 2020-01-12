@@ -26,6 +26,8 @@
 //#include "ObjModel.h"
 #include "ShadowMap.h"
 #include "DeferredShading.h"
+#include "DeferredLighting.h"
+#include "PostProcess.h"
 #include "Model.h"
 
 GLfloat last_x = 400, last_y = 300;
@@ -53,7 +55,9 @@ UBO* view = nullptr;
 Model* nanosuit = nullptr;
 Model* dddd = nullptr;
 //ShadowMap* shadow_map = nullptr;
-DeferredShading* deferred_shading = nullptr;
+//DeferredShading* deferred_shading = nullptr;
+DeferredLighting* deferred_lighting = nullptr;
+PostProcess* post_process = nullptr;
 
 
 std::vector<glm::vec3> light_positions;
@@ -167,14 +171,17 @@ int main(int /* argc */, char ** /* argv */) {
 		//	renderSceneDepth();
 		//}
 
-		// 1. Geometry Pass: render scene's geometry/color data into gbuffer
-		deferred_shading->bindFBO();
-		glViewport(0, 0, WIDTH, HEIGHT);
-		glClearColor(0.2f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		setUBO();
+
+		// 1. Geometry Pass: render scene's geometry/color data into gbuffer
+		//deferred_shading->bindFBO();
+		deferred_lighting->bindGBuffer();
+		glViewport(0, 0, WIDTH, HEIGHT);
+		glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		deferred_shading->shader_geometry_pass.Use();
+		//deferred_shading->shader_geometry_pass.Use();
+		deferred_lighting->shader_geometry_pass.Use();
 
 		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
 		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
@@ -183,7 +190,6 @@ int main(int /* argc */, char ** /* argv */) {
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glDisable(GL_BLEND);
-
 
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		for (glm::vec3 pos : objectPositions)
@@ -197,28 +203,59 @@ int main(int /* argc */, char ** /* argv */) {
 		}
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-		
+		//Light Pass
+		deferred_lighting->bindLBuffer();
+		glViewport(0, 0, WIDTH, HEIGHT);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
 
-		// 2. Lighting Pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, deferred_lighting->l_buffer.buffer); // 写入到默认帧缓冲
+		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		deferred_lighting->bindLBuffer();
+
+		deferred_lighting->lightingPass(light_positions.size());
+
+		//Post Process Pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
 		//render
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		post_process->bindHDRBuffer();
+		glViewport(0, 0, WIDTH, HEIGHT);
+		glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+		deferred_lighting->render();
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post_process->hdr_buffer.buffer);
+		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);	
+
+		for (GLuint i = 0; i < NR_LIGHTS; i++)
+		{
+			//cube->render(light_positions[i], light_colors[i]);
+			glm::mat4 model;
+			model = glm::translate(model, light_positions[i]);
+			model = glm::scale(model, glm::vec3(0.1f));
+
+			ball->render(model, light_colors[i]);
+		}
+
+		//Final render
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, WIDTH, HEIGHT);
 		glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		setUBO();
-		renderScene();
+		post_process->render();
 
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_shading->fbo.buffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // 写入到默认帧缓冲
-		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		for (GLuint i = 0; i < NR_LIGHTS; i++)
-		{
-			cube->render(light_positions[i], light_colors[i]);
-		}
 
 		// Draw nanogui
 		screen->drawContents();
@@ -271,7 +308,7 @@ void initialize()
 
 	cube = new Cube(shader);
 	texture_cube = new Cube(t_shader);
-	ball = new Sphere(shadowMap);
+	ball = new Sphere(shader);
 	camera = new Camera();
 
 	//model = new ObjModel(shadowMap, "model/track.obj", "object");
@@ -283,18 +320,35 @@ void initialize()
 	//	Shader("code/shaders/deferredShading.vert", "code/shaders/deferredShading.frag"),
 	//	glm::ivec2(WIDTH, HEIGHT));
 
-	deferred_shading = new DeferredShading(
+	//deferred_shading = new DeferredShading(
+	//	Shader(
+	//		"code/shaders/g_buffer.vert",
+	//		"code/shaders/g_buffer.tesc",
+	//		"code/shaders/g_buffer.tese",
+	//		nullptr,
+	//		"code/shaders/g_buffer.frag"),
+	//	Shader("code/shaders/deferredShading.vert", nullptr, nullptr, nullptr, "code/shaders/deferredShading.frag"),
+	//	glm::ivec2(WIDTH, HEIGHT));
+
+	//nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_shading->shader_geometry_pass);
+	
+	deferred_lighting = new DeferredLighting(
 		Shader(
 			"code/shaders/g_buffer.vert",
 			"code/shaders/g_buffer.tesc",
 			"code/shaders/g_buffer.tese",
 			nullptr,
 			"code/shaders/g_buffer.frag"),
-		Shader("code/shaders/deferredShading.vert", nullptr, nullptr, nullptr, "code/shaders/deferredShading.frag"),
+		Shader("code/shaders/l_buffer.vert", nullptr, nullptr, nullptr, "code/shaders/l_buffer.frag"),
+		Shader("code/shaders/deferredLighting.vert", nullptr, nullptr, nullptr, "code/shaders/deferredLighting.frag"),
 		glm::ivec2(WIDTH, HEIGHT));
 
-	nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_shading->shader_geometry_pass);
-	
+	nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_lighting->shader_geometry_pass);
+
+	post_process = new PostProcess(
+		Shader("code/shaders/postProcess.vert", nullptr, nullptr, nullptr, "code/shaders/postProcess.frag"),
+		glm::ivec2(WIDTH, HEIGHT));
+
 	// - Colors
 	srand(13);
 	for (GLuint i = 0; i < NR_LIGHTS; i++)
@@ -305,9 +359,9 @@ void initialize()
 		GLfloat zPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
 		light_positions.push_back(glm::vec3(xPos, yPos, zPos));
 		// Also calculate random color
-		GLfloat rColor = ((rand() % 100) / 100.0f);
-		GLfloat gColor = ((rand() % 100) / 100.0f);
-		GLfloat bColor = ((rand() % 100) / 100.0f);
+		GLfloat rColor = ((rand() % 100) / 100.0) * 5.0f;
+		GLfloat gColor = ((rand() % 100) / 100.0) * 5.0f;
+		GLfloat bColor = ((rand() % 100) / 100.0) * 5.0f;
 		light_colors.push_back(glm::vec3(rColor, gColor, bColor));
 	}
 }
@@ -322,6 +376,15 @@ void setGUI()
 	freed when the parent window is deleted */
 	new nanogui::Label(setting_window, "test label", "sans-bold");
 
+	nanogui::FloatBox<float>* float_box = new nanogui::FloatBox<float>(setting_window, post_process->exposure);
+	float_box->setCallback([&](float value)
+		{
+			post_process->exposure = value;
+			return false;
+		});
+	float_box->setMinMaxValues(0.01f, 10.0f);
+	float_box->setEditable(true);
+	float_box->setSpinnable(true);
 
 	screen->setVisible(true);
 	screen->performLayout();
@@ -424,9 +487,14 @@ void setUBO()
 	float constant = 1.0f;
 	float linear = 0.7f;
 	float quadratic = 1.8f;
-	glm::vec3 attenuation(constant, linear, quadratic);
 	for (GLuint i = 0; i < NR_LIGHTS; i++)
 	{
+		GLfloat lightMax = std::fmaxf(std::fmaxf(light_colors[i].r, light_colors[i].g), light_colors[i].b);
+		GLfloat radius =
+			(-linear + std::sqrtf(linear * linear - 4 * quadratic * (constant - (256.0 / 5.0) * lightMax)))
+			/ (2 * quadratic);
+		glm::vec4 attenuation(constant, linear, quadratic, radius);
+
 		glBufferSubData(GL_UNIFORM_BUFFER, (4 + i * 5) * sizeof(glm::vec4), sizeof(glm::vec4), &light_positions[i][0]);
 		glBufferSubData(GL_UNIFORM_BUFFER, (5 + i * 5) * sizeof(glm::vec4), sizeof(glm::vec4), &light_colors[i][0]);
 		glBufferSubData(GL_UNIFORM_BUFFER, (6 + i * 5) * sizeof(glm::vec4), sizeof(glm::vec4), &light_colors[i][0]);
@@ -477,7 +545,8 @@ void renderScene()
 	//glUniformMatrix4fv(glGetUniformLocation(cube->shader.Program, "u_model"), 1, GL_FALSE, &model[0][0]);
 	//nanosuit->Draw(cube->shader);
 
-	deferred_shading->render();
+	//deferred_shading->render();
+	deferred_lighting->render();
 
 	//shadow_map->shadow_shader.Use();
 	//shadow_map->bind(0);

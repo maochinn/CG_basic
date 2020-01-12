@@ -30,42 +30,28 @@ public:
 	}
 	void render(glm::vec3 position, glm::vec3 color = glm::vec3(0.0f), Shader* shader = nullptr)
 	{
-		if (shader == nullptr)
-		{
-			this->shader.Use();
+		glm::mat4 model;
+		model = glm::translate(model, position);
 
-			glm::mat4 model;
-			model = glm::translate(model, position);
-
-			glUniformMatrix4fv(glGetUniformLocation(this->shader.Program, "u_model"), 1, GL_FALSE, &model[0][0]);
-			glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.ambient"), 1, &color[0]);
-			glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.diffuse"), 1, &color[0]);
-			glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.specular"), 1, &color[0]);
-			glUniform1f(glGetUniformLocation(this->shader.Program, "u_material.shininess"), 16.0f);
-
-			glBindVertexArray(this->sphere.buffer);
-			glDrawElements(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-		}
-		else
-		{
-			shader->Use();
-
-			glm::mat4 model;
-			model = glm::translate(model, position);
-
-			glUniformMatrix4fv(glGetUniformLocation(shader->Program, "u_model"), 1, GL_FALSE, &model[0][0]);
-			glUniform3fv(glGetUniformLocation(shader->Program, "u_material.ambient"), 1, &color[0]);
-			glUniform3fv(glGetUniformLocation(shader->Program, "u_material.diffuse"), 1, &color[0]);
-			glUniform3fv(glGetUniformLocation(shader->Program, "u_material.specular"), 1, &color[0]);
-			glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
-
-			glBindVertexArray(this->sphere.buffer);
-			glDrawElements(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-		}
+		this->render(model, color, shader);
 	
 
+	}
+	void render(glm::mat4 model_matrix, glm::vec3 color = glm::vec3(1.0f), Shader* shader = nullptr)
+	{
+		if (shader == nullptr)
+			shader = &(this->shader);
+
+		shader->Use();
+		glUniformMatrix4fv(glGetUniformLocation(this->shader.Program, "u_model"), 1, GL_FALSE, &model_matrix[0][0]);
+		glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.ambient"), 1, &color[0]);
+		glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.diffuse"), 1, &color[0]);
+		glUniform3fv(glGetUniformLocation(this->shader.Program, "u_material.specular"), 1, &color[0]);
+		glUniform1f(glGetUniformLocation(this->shader.Program, "u_material.shininess"), 16.0f);
+
+		glBindVertexArray(this->sphere.buffer);
+		glDrawElements(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
 	}
 //private:
 	static VAO generateVAO()
