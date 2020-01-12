@@ -19,8 +19,8 @@ in C_OUT
 out E_OUT
 {
     vec3 world_pos;
-    vec2 texture_pos;
     vec3 world_normal;
+    vec2 texture_pos;
     mat3 TBN;
 } e_out;
 
@@ -34,16 +34,14 @@ layout (std140, binding = 0) uniform Matrices
     mat4 u_view;
 };
 
-
-
 vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2);
 vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2);
 
 void main()
 {
     // Interpolate the attributes of the output vertex using the barycentric coordinates
-    e_out.texture_pos = interpolate2D(e_in[0].texture_pos, e_in[1].texture_pos, e_in[2].texture_pos);
     e_out.world_pos = interpolate3D(e_in[0].world_pos, e_in[1].world_pos, e_in[2].world_pos);
+    e_out.texture_pos = interpolate2D(e_in[0].texture_pos, e_in[1].texture_pos, e_in[2].texture_pos);
 
     vec3 T = normalize(interpolate3D(e_in[0].world_tagent, e_in[1].world_tagent, e_in[2].world_tagent));
     vec3 N = normalize(interpolate3D(e_in[0].world_normal, e_in[1].world_normal, e_in[2].world_normal));

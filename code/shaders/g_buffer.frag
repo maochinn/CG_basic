@@ -7,8 +7,8 @@ layout (location = 3) out vec4 gSpecAlbedo;
 in E_OUT
 {
     vec3 world_pos;
-    vec2 texture_pos;
     vec3 world_normal;
+    vec2 texture_pos;
     mat3 TBN;
 } f_in;
 

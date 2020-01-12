@@ -40,7 +40,7 @@ void main()
     vec3 result = vec3(1.0) - exp(-hdrColor * u_exposure);
     // also gamma correct while we're at it       
     // result = pow(result, vec3(1.0 / gamma));
-    f_color = vec4(result, 1.0f);
+    f_color = vec4(result, 1.0);
     // f_color = vec4(hdrColor, 1.0);
     // f_color = vec4(0.0, 1.0, 0.0, 1.0);
 }
