@@ -6,6 +6,8 @@
 #include "BufferObject.h"
 #include "Sphere.h"
 
+#include "ShadowMap.h"
+
 class DeferredLighting
 {
 public:
@@ -32,7 +34,7 @@ public:
         this->quad = this->generateQuadVAO();
         this->sphere = Sphere::generateVAO();
     }
-    void render()
+    void render(ShadowMap* shadow_map = nullptr)
     {
         this->shader_shading_pass.Use();
 
@@ -46,6 +48,22 @@ public:
         glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_lDiffuse"), 3);
         this->bindLightSpecularTexture(4);
         glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_lSpecular"), 4);
+
+        if (shadow_map)
+        {
+            this->bindPositionTexture(5);
+            glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gPosition"), 5);
+            this->bindNormalTexture(6);
+            glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_gNormal"), 6);
+            shadow_map->bindShadowMap(7);
+            glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_shadowMap"), 7);
+
+            glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_useShadowMap"), true);
+            glUniformMatrix4fv(glGetUniformLocation(shadow_map->shadow_shader.Program, "u_lightProjViewMtx"), 1, GL_FALSE, &shadow_map->getViewProjectionMtx()[0][0]);
+        }
+        else
+            glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_use_shadow_map"), false);
+
 
         glBindVertexArray(this->quad.buffer);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -130,7 +148,7 @@ private:
     {
         // Set up G-Buffer
         // 4 textures:
-        // 1. Positions (RGB)
+        // 1. Positions (XYZ)
         // 2. Normals (RGB)
         // 3. diffuse color(RGBA)
         // 4. Specular color(RGBA)

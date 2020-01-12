@@ -43,7 +43,7 @@ uniform Material u_material;
 uniform sampler2D u_shadow_map;
 
 vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir);
-float ShadowCalculation(vec4 fragPosLightSpace);
+float ShadowCalculation(vec4 pos_light_space);
 void main()
 { 
     vec3 normal = normalize(f_in.normal);
@@ -80,6 +80,9 @@ vec3 computeDirectLight(DirectLight light, vec3 normal, vec3 view_dir)
 }
 float ShadowCalculation(vec4 pos_light_space)
 {
+    
+
+
     // perform perspective divide
     vec3 proj_coords = pos_light_space.xyz / pos_light_space.w;
     // Transform to [0,1] range

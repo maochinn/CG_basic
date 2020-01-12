@@ -33,7 +33,7 @@ public:
 			this->render(model, color, shader);
 	
 	}
-	void render(glm::mat4 model_matrix, glm::vec3 color = glm::vec3(1.0f), Shader* shader = nullptr)
+	void render(glm::mat4 model_matrix, glm::vec3 color = glm::vec3(1.0f), Shader* shader = nullptr, bool render_patch = false)
 	{
 		if (shader == nullptr)
 			shader = &(this->shader);
@@ -41,13 +41,20 @@ public:
 		shader->Use();
 
 		glUniformMatrix4fv(glGetUniformLocation(shader->Program, "u_model"), 1, GL_FALSE, &model_matrix[0][0]);
-		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.ambient"), 1, &color[0]);
-		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.diffuse"), 1, &color[0]);
-		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.specular"), 1, &color[0]);
-		glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
+		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.ambient"), 1, &color[0]);
+		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.diffuse"), 1, &color[0]);
+		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.specular"), 1, &color[0]);
+		//glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
 
 		glBindVertexArray(this->cube.buffer);
-		glDrawArrays(GL_TRIANGLES, 0, this->cube.count);
+
+		if (render_patch)
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, 3);
+			glDrawArrays(GL_PATCHES, 0, this->cube.count);
+		}
+		else
+			glDrawArrays(GL_TRIANGLES, 0, this->cube.count);
 		glBindVertexArray(0);
 	}
 private:

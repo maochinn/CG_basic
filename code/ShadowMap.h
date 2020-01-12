@@ -24,11 +24,11 @@ public:
 		this->projection_matrix = glm::ortho(-range.x, range.x, -range.y, range.y, 0.0f, 1000.0f);
 		this->view_matrix = glm::lookAt(position, position + direction, glm::vec3(0.0, 1.0, 0.0));
 	}
-	void bindFBO()
+	void bindShadowBuffer()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, this->fbo.buffer);
 	}
-	void bind(int bind_unit)
+	void bindShadowMap(int bind_unit)
 	{
 		glActiveTexture(GL_TEXTURE0 + bind_unit);
 		glBindTexture(GL_TEXTURE_2D, this->fbo.textures[0]);

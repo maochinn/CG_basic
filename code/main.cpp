@@ -54,7 +54,7 @@ UBO* view = nullptr;
 //ObjModel* model = nullptr;
 Model* nanosuit = nullptr;
 Model* dddd = nullptr;
-//ShadowMap* shadow_map = nullptr;
+ShadowMap* shadow_map = nullptr;
 //DeferredShading* deferred_shading = nullptr;
 DeferredLighting* deferred_lighting = nullptr;
 PostProcess* post_process = nullptr;
@@ -149,29 +149,53 @@ int main(int /* argc */, char ** /* argv */) {
 
 		setKeyboard(delta_time);
 
-
-		////render depth map to shadow map
-		//{
-		//	shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
-
-		//	shadow_map->bindFBO();
-		//	glViewport(0, 0, shadow_map->resolution.x, shadow_map->resolution.y);
-		//	// Clear all relevant buffers
-		//	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-		//	glClear(GL_DEPTH_BUFFER_BIT);
-
-		//	//set UBO
-		//	glm::mat4 view = shadow_map->getViewMtx();
-		//	glm::mat4 projection = shadow_map->getProjectionMtx();
-		//	glBindBuffer(GL_UNIFORM_BUFFER, matrix->ubo);
-		//	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &projection[0][0]);
-		//	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &view[0][0]);
-		//	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		//	renderSceneDepth();
-		//}
-
 		setUBO();
+
+		//render depth map to shadow map
+		{
+			shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
+
+			shadow_map->bindShadowBuffer();
+			glViewport(0, 0, shadow_map->resolution.x, shadow_map->resolution.y);
+			// Clear all relevant buffers
+			//glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+			glClear(GL_DEPTH_BUFFER_BIT);
+
+			//set UBO
+			glBindBuffer(GL_UNIFORM_BUFFER, matrix->ubo);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &shadow_map->getProjectionMtx()[0][0]);
+			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &shadow_map->getViewMtx()[0][0]);
+			glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_CULL_FACE);
+			glDisable(GL_BLEND);
+
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			for (glm::vec3 pos : objectPositions)
+			{
+				glm::mat4 model_matrix = glm::mat4();
+				model_matrix = glm::translate(model_matrix, pos);
+				model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
+
+				nanosuit->render(model_matrix, &shadow_map->depth_shader);
+			}
+
+			{
+				glm::mat4 model;
+				model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+				model = glm::scale(model, glm::vec3(10.0f, 1.0f, 10.0f));
+				cube->render(model, glm::vec3(1.0f), &shadow_map->depth_shader);
+			}
+
+			//set back
+			setUBO();
+		}
 
 		// 1. Geometry Pass: render scene's geometry/color data into gbuffer
 		//deferred_shading->bindFBO();
@@ -199,8 +223,21 @@ int main(int /* argc */, char ** /* argv */) {
 			model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
 
-			nanosuit->render(model_matrix);
+			nanosuit->render(model_matrix, &deferred_lighting->shader_geometry_pass);
 		}
+		{
+			deferred_lighting->shader_geometry_pass.Use();
+			texture->bind(0);
+			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.diffuse"), 0);
+			texture->bind(1);
+			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.specular"), 1);
+			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_use_normal_map"), false);
+			glm::mat4 model;
+			model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(30.0f, 1.0f, 30.0f));
+			cube->render(model, glm::vec3(1.0f, 0.0f, 0.0f), &deferred_lighting->shader_geometry_pass, true);
+		}
+
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		//Light Pass
@@ -232,7 +269,7 @@ int main(int /* argc */, char ** /* argv */) {
 		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
 		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
 
-		deferred_lighting->render();
+		deferred_lighting->render(shadow_map);
 
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post_process->hdr_buffer.buffer);
@@ -246,7 +283,21 @@ int main(int /* argc */, char ** /* argv */) {
 			model = glm::scale(model, glm::vec3(0.1f));
 
 			ball->render(model, light_colors[i]);
+
 		}
+
+		//{
+		//	texture_cube->shader.Use();
+		//	texture->bind(0);
+		//	glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_diffuse"), 0);
+		//	texture->bind(1);
+		//	glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_specular"), 1);
+
+		//	glm::mat4 model;
+		//	model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+		//	model = glm::scale(model, glm::vec3(30.0f, 1.0f, 30.0f));
+		//	texture_cube->render(model, glm::vec3(1.0f, 0.0f, 0.0f));
+		//}
 
 		//Final render
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -313,7 +364,10 @@ void initialize()
 
 	//model = new ObjModel(shadowMap, "model/track.obj", "object");
 
-	//shadow_map = new ShadowMap(simpleDepthShader, shadowMap, glm::ivec2(512, 512));
+	shadow_map = new ShadowMap(
+		Shader ("code/shaders/simpleDepth.vert", nullptr, nullptr, nullptr, "code/shaders/simpleDepth.frag"),
+		Shader ("code/shaders/shadowMap.vert", nullptr, nullptr, nullptr, "code/shaders/shadowMap.frag"),
+		glm::ivec2(512, 512));
 
 	//deferred_shading = new DeferredShading(
 	//	Shader("code/shaders/g_buffer.vert", "code/shaders/g_buffer.frag"),

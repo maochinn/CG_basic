@@ -51,43 +51,57 @@ uniform sampler2D u_gPosition;
 uniform sampler2D u_gNormal;
 
 
-void main()
-{   
-    //for point light
 
-    //window pos = [0, 1]
-    vec2 window_pos = (gl_FragCoord.xy / u_viewport_size.xy);
+void computePointLighting(in PointLight light,
+    in vec3 normal, vec3 world_pos, 
+    inout vec3 l_ambient, inout vec3 l_diffuse, inout vec3 l_specular)
+{
+    vec3 light_pos = light.position;
 
-    vec3 world_pos = texture(u_gPosition, window_pos).rgb;
-    vec3 normal = texture(u_gNormal, window_pos).rgb;
-    vec3 view_dir = normalize(u_view_pos - world_pos);
-    
-    vec3 light_pos = u_point_light[f_in.light_index].position;
     vec3 light_dir = normalize(light_pos - world_pos);
-
+    vec3 view_dir = normalize(u_view_pos - world_pos);
 
 	//ambient
-	vec3 ambient = u_point_light[f_in.light_index].ambient;
+	vec3 ambient = light.ambient;
 
 	//diffuse
 	float diff = max(dot(normal, light_dir), 0.0);
-	vec3 diffuse = u_point_light[f_in.light_index].diffuse * diff;
+	vec3 diffuse = light.diffuse * diff;
 
 	//specular
     vec3 halfway_dir = normalize(light_dir + view_dir);  
     float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
-    vec3 specular = u_point_light[f_in.light_index].specular * spec;
+    vec3 specular = light.specular * spec;
 
 
     float distance = length(light_pos - world_pos);
     float attenuation = 1.0f / 
-        (u_point_light[f_in.light_index].attenuation[0] +
-         u_point_light[f_in.light_index].attenuation[1] * distance +
-         u_point_light[f_in.light_index].attenuation[2] * (distance*distance));
+        (light.attenuation[0] +
+         light.attenuation[1] * distance +
+         light.attenuation[2] * (distance*distance));
+
+    l_ambient += ambient * attenuation;
+    l_diffuse += diffuse * attenuation;
+    l_specular += specular * attenuation;
+}
+
+
+void main()
+{   
+    //for point light
+    //window pos = [0, 1]
+    vec2 window_pos = (gl_FragCoord.xy / u_viewport_size.xy);
+
+    vec3 ambient = vec3(0.0, 0.0, 0.0);
+    vec3 diffuse = vec3(0.0, 0.0, 0.0);
+    vec3 specular = vec3(0.0, 0.0, 0.0);
+
+    computePointLighting(u_point_light[f_in.light_index], 
+        texture(u_gNormal, window_pos).rgb, texture(u_gPosition, window_pos).rgb, 
+        ambient, diffuse, specular);
+
     
-    lAmbient = vec4(ambient * attenuation, 1.0);
-    // lAmbient = vec4(0.0, 0.3, 0.0, 1.0);
-    // lAmbient = vec4(normal, 1.0);
-    lDiffuse = vec4(diffuse * attenuation, 1.0);
-    lSpecular = vec4(specular * attenuation, 1.0);
+    lAmbient = vec4(ambient, 1.0);
+    lDiffuse = vec4(diffuse, 1.0);
+    lSpecular = vec4(specular, 1.0);
 }
