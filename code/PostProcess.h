@@ -10,11 +10,12 @@ public:
     FBO hdr_buffer;
 
     float exposure;
-
+	glm::ivec2 size;
     PostProcess(Shader shader, glm::ivec2 resolution):
         shader(shader)
     {
         this->exposure = 0.1f;
+		this->size = resolution;
         this->quad = this->generateQuadVAO();
         this->hdr_buffer = this->generateHDRBuffer(resolution.x, resolution.y);
     }

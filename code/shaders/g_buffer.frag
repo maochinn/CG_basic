@@ -22,10 +22,10 @@ in E_OUT
 
 struct Material
 {
-    sampler2D diffuse;
-    sampler2D specular;
-    sampler2D normal;
-    sampler2D displacement;
+    sampler2D texture_diffuse;
+    sampler2D texture_specular;
+    sampler2D texture_normal;
+    sampler2D texture_displacement;
     float shininess;
 };
 uniform Material u_material;
@@ -34,7 +34,7 @@ uniform bool u_use_displacement_map;
 
 void main()
 {    
-    vec3 normal = texture(u_material.normal, f_in.texture_pos).rgb;
+    vec3 normal = texture(u_material.texture_normal, f_in.texture_pos).rgb;
     normal = normalize(normal * 2.0 - 1.0);
     normal = normalize(f_in.TBN * normal);
 
@@ -46,8 +46,8 @@ void main()
     else
         gNormal = normalize(f_in.world_normal);
     // And the diffuse per-fragment color
-    gDiffAlbedo = texture(u_material.diffuse, f_in.texture_pos);
+    gDiffAlbedo = texture(u_material.texture_diffuse, f_in.texture_pos);
     // Store specular intensity in gAlbedoSpec's alpha component
-    gSpecAlbedo = texture(u_material.specular, f_in.texture_pos);
+    gSpecAlbedo = texture(u_material.texture_specular, f_in.texture_pos);
     // gDiffAlbedo = vec4(1.0, 0.0, 0.0, 1.0);
 }

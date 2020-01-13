@@ -15,6 +15,33 @@ layout (std140, binding = 2) uniform View
     vec3 u_view_pos;    //16
 };
 
+struct DirectLight
+{                   //offset
+	vec3 direction; //0
+    vec3 ambient;   //16
+    vec3 diffuse;   //32
+    vec3 specular;  //48
+};
+struct PointLight
+{
+	vec3 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+	// float constant;
+	// float linear;
+	// float quadratic;
+    // float radius;
+    vec4 attenuation;
+};
+const int NR_LIGHTS = 32;
+
+layout (std140, binding = 1) uniform Light
+{
+    DirectLight u_direct_light;
+    PointLight u_point_light[NR_LIGHTS];
+};
+
 uniform sampler2D u_gDiffAlbedo;
 uniform sampler2D u_gSpecAlbedo;
 uniform sampler2D u_lAmbient;
@@ -46,7 +73,7 @@ float computeShadow()
     vec3 light_dir = normalize(u_view_pos - world_pos);
     float bias = max(0.001 * (1.0 - dot(normal, light_dir)), 0.0001);
     // Check whether current frag pos is in shadow
-    // float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+    // float shadow = current_depth - bias > closest_depth  ? 1.0 : 0.0;
     // PCF
     float shadow = 0.0;
     vec2 texel_size = 1.0 / textureSize(u_shadowMap, 0);
@@ -67,26 +94,61 @@ float computeShadow()
     return shadow;
 }
 
-void main()
-{             
-    vec3 ambient = texture(u_lAmbient, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).a;
-    vec3 diffuse = texture(u_lDiffuse, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).a;
-    vec3 specular = texture(u_lSpecular, f_in.texture_pos).rgb * texture(u_gSpecAlbedo, f_in.texture_pos).rgb * texture(u_gSpecAlbedo, f_in.texture_pos).a;
+void computeDirectLighting(in DirectLight light,
+    in vec3 normal, in vec3 view_dir, 
+    inout vec3 l_ambient, inout vec3 l_diffuse, inout vec3 l_specular)
+{
+   vec3 light_dir = normalize(-light.direction);
+
+	//ambient
+	vec3 ambient = light.ambient;	//texture() return vec4
+
+	//diffuse
+	float diff = max(dot(normal, light_dir), 0.0);
+	vec3 diffuse = light.diffuse * diff;
+
+	//specular
+    vec3 halfway_dir = normalize(light_dir + view_dir);  
+    float spec = pow(max(dot(normal, halfway_dir), 0.0), 32.0);
+    vec3 specular = light.specular * spec;
 
     if(u_useShadowMap)
     {
-        float shadow = computeShadow();                      
-        shadow = min(shadow, 0.75); // reduce shadow strength a little: allow some diffuse/specular light in shadowed regions
-        hdr_color = vec4((ambient + (1.0 - shadow) * (diffuse + specular)), 1.0);
-        // hdr_color = vec4(texture(u_gDiffAlbedo, f_in.texture_pos).rgb, 1.0f);
-        // hdr_color = vec4(
-        //     texture(u_shadowMap, f_in.texture_pos).r,
-        //     texture(u_shadowMap, f_in.texture_pos).r,
-        //     texture(u_shadowMap, f_in.texture_pos).r,
-        //     1.0);
+        // reduce shadow strength a little: allow some diffuse/specular light in shadowed regions       
+        float shadow = min(computeShadow(), 0.75);
+        l_ambient += ambient;       
+        l_diffuse += (1.0 - shadow) * diffuse;
+        l_specular += (1.0 - shadow) * specular;
     }
     else
-        hdr_color = vec4(ambient + diffuse + specular, 1.0);
+    {
+        l_ambient += ambient;
+        l_diffuse += diffuse;
+        l_specular += specular;
+    }
+}
+
+void main()
+{
+    // lighting
+    //point lighting
+    vec3 ambient = texture(u_lAmbient, f_in.texture_pos).rgb;
+    vec3 diffuse = texture(u_lDiffuse, f_in.texture_pos).rgb;
+    vec3 specular = texture(u_lSpecular, f_in.texture_pos).rgb;
+    // vec3 ambient = vec3(0.0, 0.0, 0.0);
+    // vec3 diffuse = vec3(0.0, 0.0, 0.0);
+    // vec3 specular = vec3(0.0, 0.0, 0.0);
+    //direct lighting
+    computeDirectLighting(u_direct_light,
+        normalize(texture(u_gNormal, f_in.texture_pos).rgb), u_view_dir,
+        ambient, diffuse, specular);
+
+    //material
+    ambient *= texture(u_gDiffAlbedo, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).a;
+    diffuse *= texture(u_gDiffAlbedo, f_in.texture_pos).rgb * texture(u_gDiffAlbedo, f_in.texture_pos).a;
+    specular *= texture(u_gSpecAlbedo, f_in.texture_pos).rgb * texture(u_gSpecAlbedo, f_in.texture_pos).a;
+
+    hdr_color = vec4(ambient + diffuse + specular, 1.0);
 
     float brightness = dot(hdr_color.rgb, vec3(0.2126, 0.7152, 0.0722));
     if(brightness > 1.0)

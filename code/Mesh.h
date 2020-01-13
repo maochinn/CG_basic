@@ -67,17 +67,17 @@ public:
 		{
 			textures[i].bind(i);
 			if (textures[i].type == Texture2D::Type::TEXTURE_DIFFUSE)
-				glUniform1i(glGetUniformLocation(shader->Program, "u_material.diffuse"), i);
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), i);
 			else if (textures[i].type == Texture2D::Type::TEXTURE_SPECULAR)
-				glUniform1i(glGetUniformLocation(shader->Program, "u_material.specular"), i);
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), i);
 			else if (textures[i].type == Texture2D::Type::TEXTURE_NORMAL)
 			{
-				glUniform1i(glGetUniformLocation(shader->Program, "u_material.normal"), i);
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_normal"), i);
 				use_normal_map = true;
 			}
 			else if (textures[i].type == Texture2D::Type::TEXTURE_DISPLACEMENT)
 			{
-				glUniform1i(glGetUniformLocation(shader->Program, "u_material.displacement"), i);
+				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_displacement"), i);
 				use_displacement_map = true;
 			}
 		}

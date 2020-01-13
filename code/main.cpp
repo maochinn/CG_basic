@@ -59,6 +59,11 @@ ShadowMap* shadow_map = nullptr;
 DeferredLighting* deferred_lighting = nullptr;
 PostProcess* post_process = nullptr;
 
+glm::vec3 direct_light_dir = glm::vec3(-1.0f, -1.0f, 0.0f);
+glm::vec3 direct_light_pos = glm::vec3(5.0f, 5.0f, 0.0f);	//for shadow map
+glm::vec3 direct_light_ambient = glm::vec3(0.2f, 0.2f, 0.0f);
+glm::vec3 direct_light_diffuse = glm::vec3(10.0f, 10.0f, 2.0f);
+glm::vec3 direct_light_specular = glm::vec3(5.0f, 5.0f, 5.0f);
 
 std::vector<glm::vec3> light_positions;
 std::vector<glm::vec3> light_colors;
@@ -70,6 +75,8 @@ void setUBO();
 void setKeyboard(float dt);
 void renderSceneDepth();
 void renderScene();
+
+
 
 int main(int /* argc */, char ** /* argv */) {
 
@@ -153,7 +160,11 @@ int main(int /* argc */, char ** /* argv */) {
 
 		//render depth map to shadow map
 		{
-			shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
+			//shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
+			shadow_map->setLight(
+				direct_light_pos,
+				direct_light_dir,
+				glm::vec2(10.0f, 10.0f));
 
 			shadow_map->bindShadowBuffer();
 			glViewport(0, 0, shadow_map->resolution.x, shadow_map->resolution.y);
@@ -175,7 +186,6 @@ int main(int /* argc */, char ** /* argv */) {
 			glEnable(GL_CULL_FACE);
 			glDisable(GL_BLEND);
 
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			for (glm::vec3 pos : objectPositions)
 			{
 				glm::mat4 model_matrix = glm::mat4();
@@ -200,7 +210,7 @@ int main(int /* argc */, char ** /* argv */) {
 		// 1. Geometry Pass: render scene's geometry/color data into gbuffer
 		//deferred_shading->bindFBO();
 		deferred_lighting->bindGBuffer();
-		glViewport(0, 0, WIDTH, HEIGHT);
+		glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
 		glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
@@ -228,9 +238,9 @@ int main(int /* argc */, char ** /* argv */) {
 		{
 			deferred_lighting->shader_geometry_pass.Use();
 			texture->bind(0);
-			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.diffuse"), 0);
+			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.texture_diffuse"), 0);
 			texture->bind(1);
-			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.specular"), 1);
+			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.texture_specular"), 1);
 			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_use_normal_map"), false);
 			glm::mat4 model;
 			model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
@@ -242,7 +252,7 @@ int main(int /* argc */, char ** /* argv */) {
 
 		//Light Pass
 		deferred_lighting->bindLBuffer();
-		glViewport(0, 0, WIDTH, HEIGHT);
+		glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -261,7 +271,7 @@ int main(int /* argc */, char ** /* argv */) {
 		//render
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		post_process->bindHDRBuffer();
-		glViewport(0, 0, WIDTH, HEIGHT);
+		glViewport(0, 0, post_process->size.x, post_process->size.y);
 		glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -285,19 +295,6 @@ int main(int /* argc */, char ** /* argv */) {
 			ball->render(model, light_colors[i]);
 
 		}
-
-		//{
-		//	texture_cube->shader.Use();
-		//	texture->bind(0);
-		//	glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_diffuse"), 0);
-		//	texture->bind(1);
-		//	glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_specular"), 1);
-
-		//	glm::mat4 model;
-		//	model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-		//	model = glm::scale(model, glm::vec3(30.0f, 1.0f, 30.0f));
-		//	texture_cube->render(model, glm::vec3(1.0f, 0.0f, 0.0f));
-		//}
 
 		//Final render
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -367,7 +364,7 @@ void initialize()
 	shadow_map = new ShadowMap(
 		Shader ("code/shaders/simpleDepth.vert", nullptr, nullptr, nullptr, "code/shaders/simpleDepth.frag"),
 		Shader ("code/shaders/shadowMap.vert", nullptr, nullptr, nullptr, "code/shaders/shadowMap.frag"),
-		glm::ivec2(512, 512));
+		glm::ivec2(1024, 1024));
 
 	//deferred_shading = new DeferredShading(
 	//	Shader("code/shaders/g_buffer.vert", "code/shaders/g_buffer.frag"),
@@ -533,10 +530,10 @@ void setUBO()
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, light->ubo);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &camera->Front[0]);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), &glm::vec3(0.25f, 0.25f, 0.25f)[0]);
-	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::vec4), sizeof(glm::vec4), &glm::vec3(0.3f, 0.3f, 0.3f)[0]);
-	glBufferSubData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::vec4), sizeof(glm::vec4), &glm::vec3(0.1f, 0.1f, 0.1f)[0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &direct_light_dir[0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4), &direct_light_ambient[0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::vec4), sizeof(glm::vec4), &direct_light_diffuse[0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::vec4), sizeof(glm::vec4), &direct_light_specular[0]);
 	
 	float constant = 1.0f;
 	float linear = 0.7f;

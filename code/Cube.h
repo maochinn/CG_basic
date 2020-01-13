@@ -41,10 +41,10 @@ public:
 		shader->Use();
 
 		glUniformMatrix4fv(glGetUniformLocation(shader->Program, "u_model"), 1, GL_FALSE, &model_matrix[0][0]);
-		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.ambient"), 1, &color[0]);
-		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.diffuse"), 1, &color[0]);
-		//glUniform3fv(glGetUniformLocation(shader->Program, "u_material.specular"), 1, &color[0]);
-		//glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
+		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.ambient"), 1, &color[0]);
+		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.diffuse"), 1, &color[0]);
+		glUniform3fv(glGetUniformLocation(shader->Program, "u_material.specular"), 1, &color[0]);
+		glUniform1f(glGetUniformLocation(shader->Program, "u_material.shininess"), 16.0f);
 
 		glBindVertexArray(this->cube.buffer);
 

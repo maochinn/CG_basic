@@ -17,10 +17,11 @@ public:
 
     FBO g_buffer;
     FBO l_buffer;
-    //render for viewport
-    VAO quad;
-    //render for point light
-    VAO sphere;
+
+    VAO quad;   //render for viewport
+    VAO sphere; //render for point light
+
+	glm::ivec2 size;
     DeferredLighting(Shader shader_geometry_pass, Shader shader_lighting_pass, Shader shader_shading_pass,
         glm::ivec2 resolution) :
         shader_geometry_pass(shader_geometry_pass), 
@@ -59,7 +60,7 @@ public:
             glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_shadowMap"), 7);
 
             glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_useShadowMap"), true);
-            glUniformMatrix4fv(glGetUniformLocation(shadow_map->shadow_shader.Program, "u_lightProjViewMtx"), 1, GL_FALSE, &shadow_map->getViewProjectionMtx()[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(this->shader_shading_pass.Program, "u_lightProjViewMtx"), 1, GL_FALSE, &shadow_map->getViewProjectionMtx()[0][0]);
         }
         else
             glUniform1i(glGetUniformLocation(this->shader_shading_pass.Program, "u_use_shadow_map"), false);
@@ -142,8 +143,6 @@ public:
         glBindTexture(GL_TEXTURE_2D, this->l_buffer.textures[2]);
     }
 private:
-    glm::ivec2 size;
-
     FBO generateGBuffer(int width, int height)
     {
         // Set up G-Buffer

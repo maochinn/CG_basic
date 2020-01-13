@@ -5,6 +5,12 @@ layout (location = 0) out vec4 lAmbient;
 layout (location = 1) out vec4 lDiffuse;
 layout (location = 2) out vec4 lSpecular;
 
+in V_OUT
+{
+    flat int light_index;
+} f_in;
+
+
 struct DirectLight
 {                   //offset
 	vec3 direction; //0
@@ -24,13 +30,6 @@ struct PointLight
     // float radius;
     vec4 attenuation;
 };
-
-in V_OUT
-{
-    flat int light_index;
-} f_in;
-
-
 
 const int NR_LIGHTS = 32;
 layout (std140, binding = 1) uniform Light

@@ -14,32 +14,32 @@ public:
 		:depth_shader(depth_shader), shadow_shader(shadow_shader)
 	{
 		this->resolution = resolution;
-		this->fbo = this->generateFBO();
+		this->shadow_buffer = this->generateShadowBuffer();
 	}
 	glm::mat4 getViewProjectionMtx() { return this->projection_matrix * this->view_matrix; }
 	glm::mat4 getViewMtx() { return this->view_matrix; }
 	glm::mat4 getProjectionMtx() { return this->projection_matrix; }
 	void setLight(glm::vec3 position, glm::vec3 direction, glm::vec2 range)
 	{
-		this->projection_matrix = glm::ortho(-range.x, range.x, -range.y, range.y, 0.0f, 1000.0f);
+		this->projection_matrix = glm::ortho(-range.x, range.x, -range.y, range.y, 0.0f, 50.0f);
 		this->view_matrix = glm::lookAt(position, position + direction, glm::vec3(0.0, 1.0, 0.0));
 	}
 	void bindShadowBuffer()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, this->fbo.buffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, this->shadow_buffer.buffer);
 	}
 	void bindShadowMap(int bind_unit)
 	{
 		glActiveTexture(GL_TEXTURE0 + bind_unit);
-		glBindTexture(GL_TEXTURE_2D, this->fbo.textures[0]);
+		glBindTexture(GL_TEXTURE_2D, this->shadow_buffer.textures[0]);
 	}
 private:
-	FBO fbo;
+	FBO shadow_buffer;
 	
 	glm::mat4 view_matrix;	//in light space
 	glm::mat4 projection_matrix;	//in light space
 
-	FBO generateFBO()
+	FBO generateShadowBuffer()
 	{
 		//FBO
 		// Framebuffers
