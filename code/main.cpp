@@ -68,6 +68,8 @@ glm::vec3 direct_light_specular = glm::vec3(5.0f, 5.0f, 5.0f);
 std::vector<glm::vec3> light_positions;
 std::vector<glm::vec3> light_colors;
 
+std::vector<glm::vec3> object_positions;
+
 void initialize();
 void setCallBack();
 void setGUI();
@@ -76,7 +78,10 @@ void setKeyboard(float dt);
 void renderSceneDepth();
 void renderScene();
 
-
+void shadowPass();
+void geometryPass();
+void lightingPass();
+void postProcessPass();
 
 int main(int /* argc */, char ** /* argv */) {
 
@@ -132,18 +137,6 @@ int main(int /* argc */, char ** /* argv */) {
 	GLfloat last_frame = 0.0f;
 	GLfloat delta_time = 0.0f;
 
-
-	std::vector<glm::vec3> objectPositions;
-	objectPositions.push_back(glm::vec3(-3.0, -3.0, -3.0));
-	objectPositions.push_back(glm::vec3(0.0, -3.0, -3.0));
-	objectPositions.push_back(glm::vec3(3.0, -3.0, -3.0));
-	objectPositions.push_back(glm::vec3(-3.0, -3.0, 0.0));
-	objectPositions.push_back(glm::vec3(0.0, -3.0, 0.0));
-	objectPositions.push_back(glm::vec3(3.0, -3.0, 0.0));
-	objectPositions.push_back(glm::vec3(-3.0, -3.0, 3.0));
-	objectPositions.push_back(glm::vec3(0.0, -3.0, 3.0));
-	objectPositions.push_back(glm::vec3(3.0, -3.0, 3.0));
-
 	// Game loop
 	while (!glfwWindowShouldClose(window)) {
 		// Check if any events have been activated (key pressed, mouse moved etc.) and call corresponding response functions
@@ -158,143 +151,13 @@ int main(int /* argc */, char ** /* argv */) {
 
 		setUBO();
 
-		//render depth map to shadow map
-		{
-			//shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
-			shadow_map->setLight(
-				direct_light_pos,
-				direct_light_dir,
-				glm::vec2(10.0f, 10.0f));
+		shadowPass();
 
-			shadow_map->bindShadowBuffer();
-			glViewport(0, 0, shadow_map->resolution.x, shadow_map->resolution.y);
-			// Clear all relevant buffers
-			//glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
-			glClear(GL_DEPTH_BUFFER_BIT);
-
-			//set UBO
-			glBindBuffer(GL_UNIFORM_BUFFER, matrix->ubo);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &shadow_map->getProjectionMtx()[0][0]);
-			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &shadow_map->getViewMtx()[0][0]);
-			glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
-			glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
-
-			glEnable(GL_DEPTH_TEST);
-			glEnable(GL_CULL_FACE);
-			glDisable(GL_BLEND);
-
-			for (glm::vec3 pos : objectPositions)
-			{
-				glm::mat4 model_matrix = glm::mat4();
-				model_matrix = glm::translate(model_matrix, pos);
-				model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
-
-				nanosuit->render(model_matrix, &shadow_map->depth_shader);
-			}
-
-			{
-				glm::mat4 model;
-				model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-				model = glm::scale(model, glm::vec3(10.0f, 1.0f, 10.0f));
-				cube->render(model, glm::vec3(1.0f), &shadow_map->depth_shader);
-			}
-
-			//set back
-			setUBO();
-		}
-
-		// 1. Geometry Pass: render scene's geometry/color data into gbuffer
-		//deferred_shading->bindFBO();
-		deferred_lighting->bindGBuffer();
-		glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
-		glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		geometryPass();
 		
-		//deferred_shading->shader_geometry_pass.Use();
-		deferred_lighting->shader_geometry_pass.Use();
+		lightingPass();
 
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
-
-		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
-		glDisable(GL_BLEND);
-
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		for (glm::vec3 pos : objectPositions)
-		{
-			glm::mat4 model_matrix = glm::mat4();
-			model_matrix = glm::translate(model_matrix, pos);
-			model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
-
-			nanosuit->render(model_matrix, &deferred_lighting->shader_geometry_pass);
-		}
-		{
-			deferred_lighting->shader_geometry_pass.Use();
-			texture->bind(0);
-			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.texture_diffuse"), 0);
-			texture->bind(1);
-			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_material.texture_specular"), 1);
-			glUniform1i(glGetUniformLocation(deferred_lighting->shader_geometry_pass.Program, "u_use_normal_map"), false);
-			glm::mat4 model;
-			model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(30.0f, 1.0f, 30.0f));
-			cube->render(model, glm::vec3(1.0f, 0.0f, 0.0f), &deferred_lighting->shader_geometry_pass, true);
-		}
-
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-		//Light Pass
-		deferred_lighting->bindLBuffer();
-		glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
-
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, deferred_lighting->l_buffer.buffer); // 写入到默认帧缓冲
-		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-		deferred_lighting->bindLBuffer();
-
-		deferred_lighting->lightingPass(light_positions.size());
-
-		//Post Process Pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
-		//render
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		post_process->bindHDRBuffer();
-		glViewport(0, 0, post_process->size.x, post_process->size.y);
-		glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
-		glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
-
-		deferred_lighting->render(shadow_map);
-
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post_process->hdr_buffer.buffer);
-		glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);	
-
-		for (GLuint i = 0; i < NR_LIGHTS; i++)
-		{
-			//cube->render(light_positions[i], light_colors[i]);
-			glm::mat4 model;
-			model = glm::translate(model, light_positions[i]);
-			model = glm::scale(model, glm::vec3(0.1f));
-
-			ball->render(model, light_colors[i]);
-
-		}
+		postProcessPass();
 
 		//Final render
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -415,6 +278,17 @@ void initialize()
 		GLfloat bColor = ((rand() % 100) / 100.0) * 5.0f;
 		light_colors.push_back(glm::vec3(rColor, gColor, bColor));
 	}
+
+	object_positions.push_back(glm::vec3(-3.0, -3.0, -3.0));
+	object_positions.push_back(glm::vec3(0.0, -3.0, -3.0));
+	object_positions.push_back(glm::vec3(3.0, -3.0, -3.0));
+	object_positions.push_back(glm::vec3(-3.0, -3.0, 0.0));
+	object_positions.push_back(glm::vec3(0.0, -3.0, 0.0));
+	object_positions.push_back(glm::vec3(3.0, -3.0, 0.0));
+	object_positions.push_back(glm::vec3(-3.0, -3.0, 3.0));
+	object_positions.push_back(glm::vec3(0.0, -3.0, 3.0));
+	object_positions.push_back(glm::vec3(3.0, -3.0, 3.0));
+
 }
 void setGUI()
 {
@@ -560,74 +434,6 @@ void setUBO()
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 }
-void renderSceneDepth()
-{
-	//glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-
-	//glEnable(GL_DEPTH_TEST);
-	//glDisable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
-
-	////cube->render(glm::vec3(-2.0f, 0.0f, 0.0f), glm::vec3(1.0f), &shadow_map->shader);
-	//ball->render(glm::vec3(0.0f, -2.0f, 0.0f), glm::vec3(1.0f), &shadow_map->depth_shader);
-	//model->render(glm::mat4(), &shadow_map->depth_shader);
-	//{
-	//	glm::mat4 model;
-	//	model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-	//	model = glm::scale(model, glm::vec3(10.0f, 1.0f, 10.0f));
-	//	cube->render(model, glm::vec3(1.0f), &shadow_map->depth_shader);
-	//}
-
-	//texture_cube->render(glm::vec3(2.0f, 0.0f, 0.0f), glm::vec3(1.0f), &shadow_map->depth_shader);
-}
-void renderScene()
-{
-	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
-	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
-	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
-
-	glEnable(GL_DEPTH_TEST);
-
-	//glm::mat4 model;
-	//model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-	//model = glm::scale(model, glm::vec3(10.0f, 10.0f, 10.0f));
-	//cube->render(model);
-	////cube->shader.Use();
-	//glUniformMatrix4fv(glGetUniformLocation(cube->shader.Program, "u_model"), 1, GL_FALSE, &model[0][0]);
-	//nanosuit->Draw(cube->shader);
-
-	//deferred_shading->render();
-	deferred_lighting->render();
-
-	//shadow_map->shadow_shader.Use();
-	//shadow_map->bind(0);
-	//glUniform1i(glGetUniformLocation(shadow_map->shadow_shader.Program, "u_shadow_map"), 0);
-	//glUniformMatrix4fv(glGetUniformLocation(shadow_map->shadow_shader.Program, "u_light_space_matrix"), 1, GL_FALSE, &shadow_map->getViewProjectionMtx()[0][0]);
-	//
-	//glEnable(GL_DEPTH_TEST);
-	//glDisable(GL_CULL_FACE);
-	//glDisable(GL_BLEND);
-
-	////cube->render(glm::vec3(-2.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), &shadow_map->shadow_shader);
-	//ball->render(glm::vec3(0.0f, -2.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), &shadow_map->shadow_shader);
-	//model->render(glm::mat4(), &shadow_map->shadow_shader);
-
-	//{
-	//	glm::mat4 model;
-	//	model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-	//	model = glm::scale(model, glm::vec3(10.0f, 1.0f, 10.0f));
-	//	cube->render(model, glm::vec3(1.0f), &shadow_map->shadow_shader);
-	//}
-
-	//texture_cube->shader.Use();
-	//shadow_map->bind(0);
-	//glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_diffuse"), 0);
-	//shadow_map->bind(1);
-	//glUniform1i(glGetUniformLocation(texture_cube->shader.Program, "u_material.t_specular"), 1);
-	//texture_cube->render(glm::vec3(2.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-	////Texture2D::unbind(0);
-	////Texture2D::unbind(1);
-}
 void setKeyboard(/*delta time*/float dt)
 {
 	if (keys[GLFW_KEY_W])
@@ -638,5 +444,136 @@ void setKeyboard(/*delta time*/float dt)
 		camera->ProcessKeyboard(LEFT, dt);
 	if (keys[GLFW_KEY_D])
 		camera->ProcessKeyboard(RIGHT, dt);
+}
+void renderScene(Shader* shader)
+{
+	for (glm::vec3 pos : object_positions)
+	{
+		glm::mat4 model_matrix = glm::mat4();
+		model_matrix = glm::translate(model_matrix, pos);
+		model_matrix = glm::rotate(model_matrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
 
+		nanosuit->render(model_matrix, shader);
+	}
+
+	{
+		shader->Use();
+		texture->bind(0);
+		glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_diffuse"), 0);
+		texture->bind(1);
+		glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), 1);
+		glUniform1i(glGetUniformLocation(shader->Program, "u_use_normal_map"), false);
+
+		glm::mat4 model;
+		model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(20.0f, 1.0f, 20.0f));
+		cube->render(model, glm::vec3(1.0f), shader);
+	}
+}
+//render depth map to shadow map
+void shadowPass()
+{
+	//shadow_map->setLight(glm::vec3(5.0f, 5.0f, 0.0f), glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(10.0f, 10.0f));
+	shadow_map->setLight(
+		direct_light_pos,
+		direct_light_dir,
+		glm::vec2(10.0f, 10.0f));
+
+	shadow_map->bindShadowBuffer();
+	glViewport(0, 0, shadow_map->resolution.x, shadow_map->resolution.y);
+	// Clear all relevant buffers
+	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Set clear color to white (not really necessery actually, since we won't be able to see behind the quad anyways)
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	//set UBO
+	glBindBuffer(GL_UNIFORM_BUFFER, matrix->ubo);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &shadow_map->getProjectionMtx()[0][0]);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &shadow_map->getViewMtx()[0][0]);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+
+	renderScene(&shadow_map->depth_shader);
+
+	//set back
+	setUBO();
+}
+void geometryPass()
+{
+	// 1. Geometry Pass: render scene's geometry/color data into gbuffer
+	//deferred_shading->bindFBO();
+	deferred_lighting->bindGBuffer();
+	glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
+	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//deferred_shading->shader_geometry_pass.Use();
+	deferred_lighting->shader_geometry_pass.Use();
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	renderScene(&deferred_lighting->shader_geometry_pass);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+void lightingPass()
+{
+	//Light Pass
+	deferred_lighting->bindLBuffer();
+	glViewport(0, 0, deferred_lighting->size.x, deferred_lighting->size.y);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, deferred_lighting->l_buffer.buffer); // 写入到默认帧缓冲
+	glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	deferred_lighting->bindLBuffer();
+
+	deferred_lighting->lightingPass(light_positions.size());
+
+}
+void postProcessPass()
+{
+	//Post Process Pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
+	post_process->bindHDRBuffer();
+	glViewport(0, 0, post_process->size.x, post_process->size.y);
+	glClearColor(0.2f, 0.25f, 0.3f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/0, matrix->ubo, 0, matrix->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/1, light->ubo, 0, light->size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, /*binding point*/2, view->ubo, 0, view->size);
+
+	deferred_lighting->render(shadow_map);
+
+	//normal forward render
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting->g_buffer.buffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post_process->hdr_buffer.buffer);
+	glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+	for (GLuint i = 0; i < NR_LIGHTS; i++)
+	{
+		glm::mat4 model;
+		model = glm::translate(model, light_positions[i]);
+		model = glm::scale(model, glm::vec3(0.1f));
+
+		ball->render(model, light_colors[i]);
+	}
 }

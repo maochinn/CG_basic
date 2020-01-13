@@ -50,7 +50,16 @@ public:
 		glUniform1f(glGetUniformLocation(this->shader.Program, "u_material.shininess"), 16.0f);
 
 		glBindVertexArray(this->sphere.buffer);
-		glDrawElements(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
+		if ((shader->type & Shader::Type::TESS_EVALUATION_SHADER) == 0)
+		{
+			glDrawElements(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
+		}
+		else
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, 3);
+			glDrawElements(GL_PATCHES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0);
+		}
+		
 		glBindVertexArray(0);
 	}
 //private:

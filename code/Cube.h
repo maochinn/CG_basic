@@ -33,7 +33,7 @@ public:
 			this->render(model, color, shader);
 	
 	}
-	void render(glm::mat4 model_matrix, glm::vec3 color = glm::vec3(1.0f), Shader* shader = nullptr, bool render_patch = false)
+	void render(glm::mat4 model_matrix, glm::vec3 color = glm::vec3(1.0f), Shader* shader = nullptr)
 	{
 		if (shader == nullptr)
 			shader = &(this->shader);
@@ -48,13 +48,15 @@ public:
 
 		glBindVertexArray(this->cube.buffer);
 
-		if (render_patch)
+		if ((shader->type & Shader::Type::TESS_EVALUATION_SHADER) == 0)
+		{
+			glDrawArrays(GL_TRIANGLES, 0, this->cube.count);
+		}
+		else
 		{
 			glPatchParameteri(GL_PATCH_VERTICES, 3);
 			glDrawArrays(GL_PATCHES, 0, this->cube.count);
 		}
-		else
-			glDrawArrays(GL_TRIANGLES, 0, this->cube.count);
 		glBindVertexArray(0);
 	}
 private:

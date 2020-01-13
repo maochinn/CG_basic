@@ -85,22 +85,26 @@ public:
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE);
 
-        //
+        //TODO
         glDisable(GL_DEPTH_TEST);
+
         glDepthMask(GL_FALSE);
 
+        //TODO
         //飛入體積會錯
         glDisable(GL_CULL_FACE);
 
-        
         glBindVertexArray(this->sphere.buffer);
         glDrawElementsInstanced(GL_TRIANGLES, this->sphere.elementAmount, GL_UNSIGNED_INT, 0, point_amount);
         glBindVertexArray(0);
 
+        //TODO
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
         glDepthMask(GL_TRUE);
+
+        //TODO
         glEnable(GL_DEPTH_TEST);
 
         glDisable(GL_BLEND);
