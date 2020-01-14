@@ -34,7 +34,7 @@ struct PointLight
     // float radius;
     vec4 attenuation;
 };
-const int NR_LIGHTS = 32;
+const int NR_LIGHTS = 256;
 
 layout (std140, binding = 1) uniform Light
 {
@@ -71,7 +71,7 @@ float computeShadow()
     // Calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(texture(u_gNormal, f_in.texture_pos).rgb);
     vec3 light_dir = normalize(u_view_pos - world_pos);
-    float bias = max(0.001 * (1.0 - dot(normal, light_dir)), 0.0001);
+    float bias = max(0.01 * (1.0 - dot(normal, light_dir)), 0.0001);
     // Check whether current frag pos is in shadow
     // float shadow = current_depth - bias > closest_depth  ? 1.0 : 0.0;
     // PCF
@@ -149,6 +149,11 @@ void main()
     specular *= texture(u_gSpecAlbedo, f_in.texture_pos).rgb * texture(u_gSpecAlbedo, f_in.texture_pos).a;
 
     hdr_color = vec4(ambient + diffuse + specular, 1.0);
+    // hdr_color = vec4(
+    //     texture(u_shadowMap, f_in.texture_pos).r,
+    //     texture(u_shadowMap, f_in.texture_pos).r,
+    //     texture(u_shadowMap, f_in.texture_pos).r,
+    //     1.0);
 
     float brightness = dot(hdr_color.rgb, vec3(0.2126, 0.7152, 0.0722));
     if(brightness > 1.0)

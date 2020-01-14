@@ -126,19 +126,20 @@ private:
 			// Tangent
 			if (mesh->HasTangentsAndBitangents())
 				vertex.tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
-			//aiColor3D diff(0.f, 0.f, 0.f);
-			//aiColor3D spec(0.f, 0.f, 0.f);
-			//aiColor3D ambi(0.f, 0.f, 0.f);
-			//aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
-			//if (mat->GetTextureCount(aiTextureType_DIFFUSE) == 0 && mat->GetTextureCount(aiTextureType_SPECULAR) == 0)	//have no texture
-			//{
-			//	mat->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
-			//	mat->Get(AI_MATKEY_COLOR_SPECULAR, spec);
-			//	mat->Get(AI_MATKEY_COLOR_AMBIENT, ambi);
-			//}
-			//vertex.Diff = glm::vec3(diff.r, diff.g, diff.b);
-			//vertex.Spec = glm::vec3(spec.r, spec.g, spec.b);
-			//vertex.Ambi = glm::vec3(ambi.r, ambi.g, ambi.b);
+
+			aiColor3D ambi(0.f, 0.f, 0.f);
+			aiColor3D diff(0.f, 0.f, 0.f);
+			aiColor3D spec(0.f, 0.f, 0.f);
+			aiMaterial* mat = scene->mMaterials[mesh->mMaterialIndex];
+			if (mat->GetTextureCount(aiTextureType_DIFFUSE) == 0)	//have no texture
+			{
+				mat->Get(AI_MATKEY_COLOR_AMBIENT, ambi);
+				mat->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
+				mat->Get(AI_MATKEY_COLOR_SPECULAR, spec);
+			}
+			vertex.ambient = glm::vec3(ambi.r, ambi.g, ambi.b);
+			vertex.diffuse = glm::vec3(diff.r, diff.g, diff.b);
+			vertex.specular = glm::vec3(spec.r, spec.g, spec.b);
 
 			vertices.push_back(vertex);
 		}

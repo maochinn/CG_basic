@@ -34,7 +34,7 @@ layout (std140, binding = 0) uniform Matrices
 };
 
 
-const int NR_LIGHTS = 32;
+const int NR_LIGHTS = 256;
 layout (std140, binding = 1) uniform Light
 {
     DirectLight u_direct_light;

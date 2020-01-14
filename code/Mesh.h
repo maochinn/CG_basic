@@ -25,10 +25,11 @@ struct Vertex {
 	glm::vec3 normal;
 	// TexCoords
 	glm::vec2 texture_pos;
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
 	glm::vec3 tangent;
-	//glm::vec3 Diff;
-	//glm::vec3 Spec;
-	//glm::vec3 Ambi;
+
 };
 
 //struct Texture {
@@ -59,6 +60,8 @@ public:
 	// Render the mesh
 	void render(Shader* shader, bool render_patch = false)
 	{
+		bool use_diffuse_texture = false;
+		bool use_specular_texture = false;
 		bool use_normal_map = false;
 		bool use_displacement_map = false;
 
@@ -67,9 +70,15 @@ public:
 		{
 			textures[i].bind(i);
 			if (textures[i].type == Texture2D::Type::TEXTURE_DIFFUSE)
+			{
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), i);
+				use_diffuse_texture = true;
+			}
 			else if (textures[i].type == Texture2D::Type::TEXTURE_SPECULAR)
+			{
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), i);
+				use_specular_texture = true;
+			}
 			else if (textures[i].type == Texture2D::Type::TEXTURE_NORMAL)
 			{
 				glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_normal"), i);
@@ -81,6 +90,8 @@ public:
 				use_displacement_map = true;
 			}
 		}
+		glUniform1i(glGetUniformLocation(shader->Program, "u_use_diffuse_texture"), use_diffuse_texture);
+		glUniform1i(glGetUniformLocation(shader->Program, "u_use_specular_texture"), use_specular_texture);
 		glUniform1i(glGetUniformLocation(shader->Program, "u_use_normal_map"), use_normal_map);
 		glUniform1i(glGetUniformLocation(shader->Program, "u_use_displacement_map"), use_displacement_map);
 
@@ -140,18 +151,20 @@ private:
 		// Vertex Texture Coords
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, texture_pos));
-		// Vertex Tangent Coords
+
 		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, tangent));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, ambient));
 
-		//glEnableVertexAttribArray(3);
-		//glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Diff));
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, diffuse));
 
-		//glEnableVertexAttribArray(4);
-		//glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Spec));
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, specular));
 
-		//glEnableVertexAttribArray(5);
-		//glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Ambi));
+		// Vertex Tangent Coords
+		glEnableVertexAttribArray(6);
+		glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, tangent));
+
 
 		glBindVertexArray(0);
 	}

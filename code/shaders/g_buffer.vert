@@ -2,16 +2,20 @@
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec2 texture_pos;
-layout (location = 3) in vec3 tagent;
-// layout (location = 3) in vec3 diffuse;
-// layout (location = 4) in vec3 specular;
-// layout (location = 5) in vec3 ambient;
+layout (location = 3) in vec3 ambient;
+layout (location = 4) in vec3 diffuse;
+layout (location = 5) in vec3 specular;
+layout (location = 6) in vec3 tagent;
+
 
 out V_OUT
 {
     vec3 world_pos;
     vec3 world_normal;
     vec2 texture_pos;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
     vec3 world_tagent;
 } v_out;
 
@@ -32,6 +36,10 @@ void main()
     mat3 normal_mtx = transpose(inverse(mat3(u_model)));
     v_out.world_normal = normal_mtx * normal;
     v_out.world_tagent = normal_mtx * tagent;
+
+    v_out.ambient = ambient;
+    v_out.diffuse = diffuse;
+    v_out.specular = specular;
 
     gl_Position = u_projection * u_view * world_pos;
 }

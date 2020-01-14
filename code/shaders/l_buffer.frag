@@ -31,7 +31,7 @@ struct PointLight
     vec4 attenuation;
 };
 
-const int NR_LIGHTS = 32;
+const int NR_LIGHTS = 256;
 layout (std140, binding = 1) uniform Light
 {
     DirectLight u_direct_light;

@@ -5,23 +5,13 @@ layout (vertices = 3) out;
 in V_OUT
 {
     vec3 world_pos;
-    vec3 world_normal;
     vec2 texture_pos;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    vec3 world_tagent;
 } c_in[];
 
 out C_OUT
 {
     vec3 world_pos;
-    vec3 world_normal;
     vec2 texture_pos;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    vec3 world_tagent;
 } c_out[];
 
 
@@ -37,12 +27,7 @@ void main()
 {
     // Set the control points of the output patch
     c_out[gl_InvocationID].world_pos = c_in[gl_InvocationID].world_pos;
-    c_out[gl_InvocationID].world_normal = c_in[gl_InvocationID].world_normal;
     c_out[gl_InvocationID].texture_pos = c_in[gl_InvocationID].texture_pos;
-    c_out[gl_InvocationID].ambient = c_in[gl_InvocationID].ambient;
-    c_out[gl_InvocationID].diffuse = c_in[gl_InvocationID].diffuse;
-    c_out[gl_InvocationID].specular = c_in[gl_InvocationID].specular;
-    c_out[gl_InvocationID].world_tagent = c_in[gl_InvocationID].world_tagent;
 
     // Calculate the distance from the camera to the three control points
     float distance_0 = distance(u_view_pos, c_out[0].world_pos);

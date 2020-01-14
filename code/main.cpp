@@ -25,10 +25,11 @@
 #include "Texture.h"
 //#include "ObjModel.h"
 #include "ShadowMap.h"
-#include "DeferredShading.h"
 #include "DeferredLighting.h"
 #include "PostProcess.h"
 #include "Model.h"
+#include "HeightMap.h"
+#include "CubeMap.h"
 
 GLfloat last_x = 400, last_y = 300;
 bool firstMouse = true;
@@ -38,7 +39,7 @@ bool keys[1024] = { 0 };
 int WIDTH = 800;	//width of window
 int HEIGHT = 800;	//height of window
 
-const GLuint NR_LIGHTS = 32;
+const GLuint NR_LIGHTS = 256;
 
 GLFWwindow* window = nullptr;
 nanogui::Screen *screen = nullptr;
@@ -53,16 +54,21 @@ UBO* light = nullptr;
 UBO* view = nullptr;
 //ObjModel* model = nullptr;
 Model* nanosuit = nullptr;
-Model* dddd = nullptr;
+Model* train = nullptr;
+HeightMap* taiwan = nullptr;
+HeightMap* wave = nullptr;
+CubeMap* skybox = nullptr;
+
 ShadowMap* shadow_map = nullptr;
-//DeferredShading* deferred_shading = nullptr;
 DeferredLighting* deferred_lighting = nullptr;
 PostProcess* post_process = nullptr;
 
+
+
 glm::vec3 direct_light_dir = glm::vec3(-1.0f, -1.0f, 0.0f);
 glm::vec3 direct_light_pos = glm::vec3(5.0f, 5.0f, 0.0f);	//for shadow map
-glm::vec3 direct_light_ambient = glm::vec3(0.2f, 0.2f, 0.0f);
-glm::vec3 direct_light_diffuse = glm::vec3(10.0f, 10.0f, 2.0f);
+glm::vec3 direct_light_ambient = glm::vec3(0.1f, 0.1f, 0.03f);
+glm::vec3 direct_light_diffuse = glm::vec3(10.0f, 10.0f, 8.0f);
 glm::vec3 direct_light_specular = glm::vec3(5.0f, 5.0f, 5.0f);
 
 std::vector<glm::vec3> light_positions;
@@ -75,8 +81,8 @@ void setCallBack();
 void setGUI();
 void setUBO();
 void setKeyboard(float dt);
-void renderSceneDepth();
-void renderScene();
+
+void renderScene(Shader* shader);
 
 void shadowPass();
 void geometryPass();
@@ -148,6 +154,8 @@ int main(int /* argc */, char ** /* argv */) {
 		last_frame = current_frame;
 
 		setKeyboard(delta_time);
+
+		wave->update();
 
 		setUBO();
 
@@ -258,19 +266,48 @@ void initialize()
 		glm::ivec2(WIDTH, HEIGHT));
 
 	nanosuit = new Model("model/nanosuit/nanosuit.obj", deferred_lighting->shader_geometry_pass);
+	
+	train = new Model("model3d/track.obj", deferred_lighting->shader_geometry_pass);
 
 	post_process = new PostProcess(
 		Shader("code/shaders/postProcess.vert", nullptr, nullptr, nullptr, "code/shaders/postProcess.frag"),
 		glm::ivec2(WIDTH, HEIGHT));
+
+	taiwan = new HeightMap("img/Taiwan", 1, 
+		Shader(
+			"code/shaders/heightMapShader.vert",
+			"code/shaders/g_buffer.tesc",
+			"code/shaders/g_buffer.tese",
+			nullptr,
+			"code/shaders/g_buffer.frag"),
+		glm::vec3(100.0f, 5.0f, 100.0f), glm::vec3(0.0f, -5.0f, 0.0f));
+
+	wave = new HeightMap("img/waves5/waves5", 200,
+		Shader(
+			"code/shaders/heightMapShader.vert",
+			"code/shaders/g_buffer.tesc",
+			"code/shaders/g_buffer.tese",
+			nullptr,
+			"code/shaders/waveShader.frag"),
+		glm::vec3(500.0f, 1.0f, 500.0f), glm::vec3(0.0, -5.0, 0.0f));
+
+	skybox = new CubeMap(
+		Shader("code/shaders/cubeMap.vert", nullptr, nullptr, nullptr, "code/shaders/cubeMap.frag"),
+		"img/skybox/right.jpg",
+		"img/skybox/left.jpg",
+		"img/skybox/top.jpg",
+		"img/skybox/bottom.jpg",
+		"img/skybox/back.jpg",
+		"img/skybox/front.jpg");
 
 	// - Colors
 	srand(13);
 	for (GLuint i = 0; i < NR_LIGHTS; i++)
 	{
 		// Calculate slightly random offsets
-		GLfloat xPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
-		GLfloat yPos = ((rand() % 100) / 100.0) * 6.0;
-		GLfloat zPos = ((rand() % 100) / 100.0) * 6.0 - 3.0;
+		GLfloat xPos = ((rand() % 100) / 100.0) * 20.0 - 10.0;
+		GLfloat yPos = ((rand() % 100) / 100.0) * 20.0 - 10.0;
+		GLfloat zPos = ((rand() % 100) / 100.0) * 20.0 - 10.0;
 		light_positions.push_back(glm::vec3(xPos, yPos, zPos));
 		// Also calculate random color
 		GLfloat rColor = ((rand() % 100) / 100.0) * 5.0f;
@@ -279,16 +316,15 @@ void initialize()
 		light_colors.push_back(glm::vec3(rColor, gColor, bColor));
 	}
 
-	object_positions.push_back(glm::vec3(-3.0, -3.0, -3.0));
-	object_positions.push_back(glm::vec3(0.0, -3.0, -3.0));
-	object_positions.push_back(glm::vec3(3.0, -3.0, -3.0));
-	object_positions.push_back(glm::vec3(-3.0, -3.0, 0.0));
-	object_positions.push_back(glm::vec3(0.0, -3.0, 0.0));
-	object_positions.push_back(glm::vec3(3.0, -3.0, 0.0));
-	object_positions.push_back(glm::vec3(-3.0, -3.0, 3.0));
-	object_positions.push_back(glm::vec3(0.0, -3.0, 3.0));
-	object_positions.push_back(glm::vec3(3.0, -3.0, 3.0));
-
+	object_positions.push_back(glm::vec3(-5.0, -5.0, -5.0));
+	object_positions.push_back(glm::vec3(0.0, -5.0, -5.0));
+	object_positions.push_back(glm::vec3(5.0, -5.0, -5.0));
+	object_positions.push_back(glm::vec3(-5.0, -5.0, 0.0));
+	object_positions.push_back(glm::vec3(0.0, -5.0, 0.0));
+	object_positions.push_back(glm::vec3(5.0, -5.0, 0.0));
+	object_positions.push_back(glm::vec3(-5.0, -5.0, 5.0));
+	object_positions.push_back(glm::vec3(0.0, -5.0, 5.0));
+	object_positions.push_back(glm::vec3(5.0, -5.0, 5.0));
 }
 void setGUI()
 {
@@ -458,18 +494,27 @@ void renderScene(Shader* shader)
 	}
 
 	{
-		shader->Use();
-		texture->bind(0);
-		glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_diffuse"), 0);
-		texture->bind(1);
-		glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), 1);
-		glUniform1i(glGetUniformLocation(shader->Program, "u_use_normal_map"), false);
-
-		glm::mat4 model;
-		model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(20.0f, 1.0f, 20.0f));
-		cube->render(model, glm::vec3(1.0f), shader);
+		glm::mat4 model_matrix = glm::mat4();
+		model_matrix = glm::translate(model_matrix, glm::vec3(0.0f, 5.0f, 2.0f));
+		
+		train->render(model_matrix, shader);
 	}
+
+	//{
+	//	shader->Use();
+	//	glUniform1i(glGetUniformLocation(shader->Program, "u_use_diffuse_texture"), true);
+	//	glUniform1i(glGetUniformLocation(shader->Program, "u_use_specular_texture"), true);
+	//	texture->bind(0);
+	//	glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_diffuse"), 0);
+	//	texture->bind(1);
+	//	glUniform1i(glGetUniformLocation(shader->Program, "u_material.texture_specular"), 1);
+	//	glUniform1i(glGetUniformLocation(shader->Program, "u_use_normal_map"), false);
+
+	//	glm::mat4 model;
+	//	model = glm::translate(model, glm::vec3(0.0f, -5.0f, 0.0f));
+	//	model = glm::scale(model, glm::vec3(30.0f, 1.0f, 30.0f));
+	//	cube->render(model, glm::vec3(1.0f), shader);
+	//}
 }
 //render depth map to shadow map
 void shadowPass()
@@ -501,7 +546,8 @@ void shadowPass()
 	glDisable(GL_BLEND);
 
 	renderScene(&shadow_map->depth_shader);
-
+	taiwan->render(&shadow_map->depth_shader);
+	wave->render(&shadow_map->depth_shader);
 	//set back
 	setUBO();
 }
@@ -527,6 +573,8 @@ void geometryPass()
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	renderScene(&deferred_lighting->shader_geometry_pass);
+	taiwan->render();
+	wave->render(nullptr, skybox);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 void lightingPass()
@@ -576,4 +624,6 @@ void postProcessPass()
 
 		ball->render(model, light_colors[i]);
 	}
+
+	skybox->render();
 }

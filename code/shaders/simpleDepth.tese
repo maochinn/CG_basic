@@ -4,23 +4,13 @@ layout(triangles, equal_spacing, ccw) in;
 in C_OUT
 {
     vec3 world_pos;
-    vec3 world_normal;
     vec2 texture_pos;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    vec3 world_tagent;
 } e_in[];
 
 out E_OUT
 {
     vec3 world_pos;
-    vec3 world_normal;
     vec2 texture_pos;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    mat3 TBN;
 } e_out;
 
 layout (std140, binding = 0) uniform Matrices
@@ -42,6 +32,7 @@ uniform Material u_material;
 
 uniform bool u_use_height_map;
 uniform bool u_use_displacement_map;
+uniform float u_displacement_factor;
 uniform mat4 u_model;
 uniform vec2 u_texture_size;
 
@@ -75,17 +66,6 @@ void main()
     // Interpolate the attributes of the output vertex using the barycentric coordinates
     e_out.world_pos = interpolate3D(e_in[0].world_pos, e_in[1].world_pos, e_in[2].world_pos);
     e_out.texture_pos = interpolate2D(e_in[0].texture_pos, e_in[1].texture_pos, e_in[2].texture_pos);
-    e_out.ambient = interpolate3D(e_in[0].ambient, e_in[1].ambient, e_in[2].ambient);
-    e_out.diffuse = interpolate3D(e_in[0].diffuse, e_in[1].diffuse, e_in[2].diffuse);
-    e_out.specular = interpolate3D(e_in[0].specular, e_in[1].specular, e_in[2].specular);
-
-    vec3 T = normalize(interpolate3D(e_in[0].world_tagent, e_in[1].world_tagent, e_in[2].world_tagent));
-    vec3 N = normalize(interpolate3D(e_in[0].world_normal, e_in[1].world_normal, e_in[2].world_normal));
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T);   
-    e_out.TBN = mat3(T, B, N);
-
-    e_out.world_normal = N;
 
     if (u_use_height_map)
     {
@@ -93,8 +73,7 @@ void main()
         vec3 normal;
 
         getHeightAndNormal(height, normal, e_out.texture_pos);
-        e_out.world_pos += e_out.world_normal * height * 5.0;
-        e_out.world_normal = transpose(inverse(mat3(u_model))) * normal;
+        e_out.world_pos += e_out.world_normal * height * u_displacement_factor;
     }
 
     gl_Position = u_projection * u_view * vec4(e_out.world_pos, 1.0);
